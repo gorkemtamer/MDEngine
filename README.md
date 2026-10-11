@@ -25,7 +25,7 @@ Time integrator: Velocity-verlet
 -----------------------------------------------------
 7.10.2026:
 
-- First version of the viewer for a single snapshot (mostly done with the help of cloud)
+- First version of the viewer for a single snapshot (mostly done with the help of claude)
 - Random number generator for uniform (xoshiro256*), normal (Box-Muller method) and Maxwell-Boltzmann distirbutions for a randomized initial configuration
 - Simple implementation of atomic radii to avoid overlapping hard spheres by CheckMinDistance and a 
 reduced atomic radii list (normalized to Ar radius)
@@ -37,4 +37,4 @@ hardcoded to a LJ potential (epot is computed directly from dU/dr analytically)
 -----------------------------------------------------
 12.10.2026:
 
--
+- Switch to cpp in order to avoid overhead in `struct`.
