@@ -38,3 +38,6 @@ hardcoded to a LJ potential (epot is computed directly from dU/dr analytically)
 12.10.2026:
 
 - Switch to cpp in order to avoid overhead in `struct`.
+- Vec3 helper functions to collect operations to one place
+- for PBC: nearest image distance
+- current implementation mostly implemented assuming PBC, OBC will come later

@@ -19,6 +19,7 @@
 #include "paths.h"
 #include "elements.h"
 #include "params.h"
+#include "vec3.h"
 
 // Allocate a frame with n rows. All columns are allocated; caller fills them.
 XYZFrame* xyz_alloc(int n) {
@@ -138,21 +139,23 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
     f->n = n;
 
     // Maxwell-Boltzmann velocities at DEFAULT_T, using each particle's mass
-    double px = 0, py = 0, pz = 0, mtot = 0;     // total momentum and mass
+    Vec3 p{}; // total momentum
+    double mtot = 0; // total mass
     for (int i = 0; i < n; ++i) {
         double m = element_mass(f->label[i]);
         f->vx[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
         f->vy[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
         f->vz[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
-        px += m * f->vx[i]; py += m * f->vy[i]; pz += m * f->vz[i];
+        p += m * Vec3{ f->vx[i], f->vy[i], f->vz[i] };
         mtot += m;
     }
 
     // remove the center-of-mass velocity: total momentum becomes zero
+    const Vec3 vcm = p / mtot;
     for (int i = 0; i < n; ++i) {
-        f->vx[i] -= px / mtot;
-        f->vy[i] -= py / mtot;
-        f->vz[i] -= pz / mtot;
+        f->vx[i] -= vcm.x;
+        f->vy[i] -= vcm.y;
+        f->vz[i] -= vcm.z;
     }
 
     if (xyz_write(path, f) != 0) { xyz_free(f); return NULL; }

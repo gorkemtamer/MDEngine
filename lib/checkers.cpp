@@ -7,12 +7,7 @@
 #include <math.h>
 #include "checkers.h"
 #include "elements.h"
-
-// Minimum-image convention: shift d by whole box lengths so that it lies
-// in [-L/2, L/2], i.e. the distance to the nearest periodic copy.
-static double min_image(double d, double L) {
-    return d - L * round(d / L);
-}
+#include "vec3.h"
 
 // Plain O(n^2) loop over all pairs.
 // TODO: cell lists if n gets large.
@@ -23,10 +18,10 @@ int CheckMinDistance(const XYZFrame *f) {
                         "must be 1 for PBC or 0 for OBC)\n", f->periodic);
         return -1;
     }
-    const double *L = f->lattice;
-    if (f->periodic && (L[0] <= 0 || L[1] <= 0 || L[2] <= 0)) {
+    const Vec3 L{f->lattice[0], f->lattice[1], f->lattice[2]};
+    if (f->periodic && (L.x <= 0 || L.y <= 0 || L.z <= 0)) {
         fprintf(stderr, "CheckMinDistance: periodic boundaries need positive box lengths "
-                        "(got %g %g %g)\n", L[0], L[1], L[2]);
+                        "(got %g %g %g)\n", L.x, L.y, L.z);
         return -1;
     }
 
@@ -42,16 +37,10 @@ int CheckMinDistance(const XYZFrame *f) {
         for (int j = i + 1; j < f->n; ++j) {
             double rj = element_radius(f->label[j]);
             if (rj < 0) continue;      // reported when the outer loop reaches j
-            double dx = f->x[i] - f->x[j];
-            double dy = f->y[i] - f->y[j];
-            double dz = f->z[i] - f->z[j];
-            if (f->periodic) {
-                dx = min_image(dx, L[0]);
-                dy = min_image(dy, L[1]);
-                dz = min_image(dz, L[2]);
-            }
+            Vec3 d = Vec3{ f->x[i], f->y[i], f->z[i]} - Vec3{ f->x[j], f->y[j], f->z[j]};
+            if (f->periodic) d = min_image(d, L);
             double dmin = MIN_DIST_FACTOR * (ri + rj);    // fraction of sigma_ij
-            if (dx*dx + dy*dy + dz*dz < dmin * dmin) ++too_close;   // compare squares, no sqrt
+            if (norm2(d) < dmin * dmin) ++too_close;   // compare squares, no sqrt
         }
     }
     return too_close;

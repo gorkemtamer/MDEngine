@@ -8,15 +8,12 @@
 #include "integrator.h"
 #include "elements.h"
 #include "params.h"
-
-// same minimum-image convention as in checkers.c
-static double min_image(double d, double L) {
-    return d - L * round(d / L);
-}
+#include "vec3.h"
 
 int ComputeForces(XYZFrame *f) {
     const int n = f->n;
     const double *L = f->lattice;
+    const Vec3 box{ L[0], L[1], L[2]};
 
     if (f->periodic != 0 && f->periodic != 1) {
         fprintf(stderr, "ComputeForces: boundary conditions not set (periodic = %d)\n", f->periodic);
@@ -67,15 +64,9 @@ int ComputeForces(XYZFrame *f) {
     double U = 0.0;
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
-            double dx = f->x[i] - f->x[j];
-            double dy = f->y[i] - f->y[j];
-            double dz = f->z[i] - f->z[j];
-            if (f->periodic) {
-                dx = min_image(dx, L[0]);
-                dy = min_image(dy, L[1]);
-                dz = min_image(dz, L[2]);
-            }
-            double r2 = dx*dx + dy*dy + dz*dz;
+            Vec3 d = Vec3{ f->x[i], f->y[i], f->z[i] } - Vec3{ f->x[j], f->y[j], f->z[j] };
+            if (f->periodic) d = min_image(d,box);
+            double r2 = norm2(d);
 
             double s  = 0.5 * (sig[i] + sig[j]);      // Lorentz
             double e  = sqrt(eps[i] * eps[j]);        // Berthelot
@@ -95,9 +86,10 @@ int ComputeForces(XYZFrame *f) {
 
             // F_i = -dV/dr * (r_i - r_j)/r = 24 eps (2 s12 - s6) / r^2 * (r_i - r_j)
             double fr = 24.0 * e * (2.0 * s12 - s6) / r2;
-            f->fx[i] += fr * dx;  f->fx[j] -= fr * dx;   // Newton's third law:
-            f->fy[i] += fr * dy;  f->fy[j] -= fr * dy;   // force on j is minus
-            f->fz[i] += fr * dz;  f->fz[j] -= fr * dz;   // the force on i
+            Vec3 F = fr * d; //force on i from j
+            f->fx[i] += F.x;  f->fx[j] -= F.x; // Newton's third law:
+            f->fy[i] += F.y;  f->fy[j] -= F.y; // force on j is minus
+            f->fz[i] += F.z;  f->fz[j] -= F.z; // the force on i
         }
     }
 
