@@ -30,7 +30,7 @@ int CheckMinDistance(const XYZFrame *f) {
     for (int i = 0; i < f->n; ++i) {
         double ri = element_radius(f->label[i]);
         if (ri < 0) {
-            fprintf(stderr, "CheckMinDistance: no radius for label '%s' (particle %d), add it to elements.c\n",
+            fprintf(stderr, "CheckMinDistance: no radius for label '%s' (particle %d), add it to elements.cpp\n",
                     f->label[i], i);
             return -1;
         }

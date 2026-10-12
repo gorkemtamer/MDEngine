@@ -12,7 +12,7 @@
 
 // Checks every pair of particles against the minimum distance
 // MIN_DIST_FACTOR * (element_radius(i) + element_radius(j)), in reduced
-// units (see elements.h / elements.c).
+// units (see elements.h / elements.cpp).
 // First makes sure the boundary conditions are defined (f->periodic):
 //   1  periodic: distances use the minimum-image convention (nearest copy
 //      of j in the periodic images of the box)
@@ -21,7 +21,7 @@
 //         >0  number of pairs that are too close,
 //         -1  invalid input, printed to stderr: f->periodic not 0/1,
 //             non-positive box lengths with PBC, or a label without a
-//             radius in elements.c.
+//             radius in elements.cpp.
 int CheckMinDistance(const XYZFrame *f);
 
 #endif

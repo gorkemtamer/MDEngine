@@ -33,9 +33,9 @@ belong to the same fit:
 
 | Base unit | Symbol | Value | Defined in code |
 |---|---|---|---|
-| length | σ_Ar | 3.418 Å | `SIGMA_REF` in `lib/elements.c` |
-| energy | ε_Ar | ε/k_B = 124.0 K | `EPS_REF` in `lib/elements.c` |
-| mass | m_Ar | 39.948 u | `MASS_REF` in `lib/elements.c` |
+| length | σ_Ar | 3.418 Å | `SIGMA_REF` in `lib/elements.cpp` |
+| energy | ε_Ar | ε/k_B = 124.0 K | `EPS_REF` in `lib/elements.cpp` |
+| mass | m_Ar | 39.948 u | `MASS_REF` in `lib/elements.cpp` |
 | Boltzmann constant | k_B | 1 | implicit |
 
 If you change the reference (e.g. to σ = 3.405 Å, ε/k_B = 119.8 K, another
@@ -74,9 +74,11 @@ a cut-off potential shifts them slightly.
 
 ## Elements
 
-σ, ε and mass are stored in `lib/elements.c` in Å, K and u.
-`element_radius()` returns σ_i / (2 σ_Ar), `element_epsilon()` returns
-ε_i / ε_Ar and `element_mass()` returns m_i / m_Ar.
+σ, ε and mass are written in `lib/elements.cpp` in Å, K and u, and
+converted once, at compile time, to reduced units. `element(element_index(label))`
+returns an `Element` with `.sigma` = σ_i / σ_Ar, `.eps` = ε_i / ε_Ar and
+`.mass` = m_i / m_Ar. The older `element_radius()` (σ_i / 2),
+`element_epsilon()` and `element_mass()` still exist and return the same values.
 
 | Element | σ (Å) | σ\* | radius\* = σ\*/2 | mass (u) | m\* | ε/k_B (K) | ε\* |
 |---|---|---|---|---|---|---|---|
@@ -128,6 +130,7 @@ Because `element_radius()` returns σ_i / 2, the sum of two radii is σ_ij.
 | `KineticEnergy()`, `PotentialEnergy()` (`lib/measure.h`), `XYZFrame.epot` | energies | ε |
 | `VelocityVerletStep(f, dt)` | time step | τ (typical 0.005 ≈ 10.6 fs) |
 | `element_epsilon()` | ε_i | ε_Ar |
+| `Element.sigma`, `.eps`, `.mass` (`element(k)`) | σ_i, ε_i, m_i | σ_Ar, ε_Ar, m_Ar |
 
 Example: a Maxwell–Boltzmann velocity for argon at 100 K is
 `rng_MaxwellBoltzmann(&rng, 100.0 / 124.0, element_mass("Ar"))`,

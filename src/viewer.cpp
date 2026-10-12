@@ -3,7 +3,7 @@
     Uses raylib (version 5.5.0)
     (written by claude)
     coordinates are in reduced units (sigma_Ar = 1); each sphere is drawn
-    with radius sigma_i / 2 from elements.c, so particles at distance
+    with radius sigma_i / 2 from elements.cpp, so particles at distance
     sigma_ij just touch
 
     Usage:  bin/viewer [file1.xyz file2.xyz ...] [font.ttf]

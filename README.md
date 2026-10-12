@@ -41,3 +41,5 @@ hardcoded to a LJ potential (epot is computed directly from dU/dr analytically)
 - Vec3 helper functions to collect operations to one place
 - for PBC: nearest image distance
 - current implementation mostly implemented assuming PBC, OBC will come later
+- new element data structure (necessary parameters computed once during compilation and
+no further compute is needed)
