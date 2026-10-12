@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <vector>
 #include "raylib.h"
 #include "xyzio.h"
 #include "elements.h"
@@ -84,6 +85,11 @@ static int type_index(TypeTable *t, const char *label) {
     return k;
 }
 
+// raylib works in float, the frames in double: convert explicitly
+static Vector3 v3(double x, double y, double z) {
+    return { (float)x, (float)y, (float)z };
+}
+
 // ---------------------------------------------------------------------
 // 3D arrow from the surface of the sphere at p (radius r) along v.
 // Length is scale*|v|: a cylinder shaft plus a cone head.
@@ -115,7 +121,7 @@ typedef struct {
 
 static void orbit_apply(const Orbit *o, Camera3D *cam) {
     cam->target = o->target;
-    cam->position = (Vector3){
+    cam->position = Vector3{
         o->target.x + o->dist * cosf(o->pitch) * sinf(o->yaw),
         o->target.y + o->dist * sinf(o->pitch),
         o->target.z + o->dist * cosf(o->pitch) * cosf(o->yaw)
@@ -167,7 +173,7 @@ static void orbit_update(Orbit *o, const Camera3D *cam) {
 int main(int argc, char **argv) {
     // split the arguments: .ttf/.otf -> font, everything else -> trajectory frames
     const char *font_path = DEFAULT_FONT;
-    const char **paths = malloc((argc > 1 ? argc : 2) * sizeof *paths);
+    const char **paths = static_cast<const char**>(malloc((argc > 1 ? argc : 2) * sizeof *paths));
     int nframes = 0;
     for (int a = 1; a < argc; ++a) {
         if (IsFileExtension(argv[a], ".ttf;.otf")) font_path = argv[a];
@@ -176,7 +182,7 @@ int main(int argc, char **argv) {
     if (nframes == 0) paths[nframes++] = INPUT_DIR "test.xyz";
 
     // load every frame up front; all frames must describe the same particles
-    XYZFrame **frames = calloc(nframes, sizeof *frames);
+    XYZFrame **frames = static_cast<XYZFrame**>(calloc(nframes, sizeof *frames));
     for (int k = 0; k < nframes; ++k) {
         frames[k] = xyz_read(paths[k]);       // prints the reason on failure
         int ok = frames[k] != NULL;
@@ -200,7 +206,7 @@ int main(int argc, char **argv) {
     XYZFrame *f = frames[0];                  // frame currently shown
 
     // camera centered on the first frame's box
-    Vector3 c = { f->lattice[0] / 2, f->lattice[1] / 2, f->lattice[2] / 2 };
+    Vector3 c = v3(f->lattice[0] / 2, f->lattice[1] / 2, f->lattice[2] / 2);
     float Lmax = fmaxf(f->lattice[0], fmaxf(f->lattice[1], f->lattice[2]));
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);    // smoother sphere edges
@@ -224,7 +230,7 @@ int main(int argc, char **argv) {
 
     const Orbit home = { .target = c, .dist = 2.5f * Lmax, .yaw = 0.785f, .pitch = 0.615f };
     Orbit orbit = home;
-    Camera3D cam = { .up = { 0, 1, 0 }, .fovy = 45, .projection = CAMERA_PERSPECTIVE };
+    Camera3D cam = { .position = {}, .target = {}, .up = { 0, 1, 0 }, .fovy = 45, .projection = CAMERA_PERSPECTIVE };
     orbit_apply(&orbit, &cam);
 
     float vscale = 0.5f;          // arrow length = vscale * |v|, change with + / -
@@ -239,13 +245,13 @@ int main(int argc, char **argv) {
     int   dragging = 0;             // 1 while the frame slider is held with the mouse
 
     // assign each particle a type (and thus a color) once, up front
-    TypeTable types = {0};
-    int type_of[f->n];
+    TypeTable types{};
+    std::vector<int> type_of(f->n);
     for (int i = 0; i < f->n; ++i) type_of[i] = type_index(&types, f->label[i]);
 
     while (!WindowShouldClose()) {
         // frame slider along the bottom, above the help lines
-        Rectangle track = { 20, GetScreenHeight() - 92, GetScreenWidth() - 40, 6 };
+        Rectangle track = { 20, (float)(GetScreenHeight() - 92), (float)(GetScreenWidth() - 40), 6 };
         Rectangle hit   = { track.x - 10, track.y - 12, track.width + 20, track.height + 24 };
         if (nframes > 1) {
             Vector2 m = GetMousePosition();
@@ -287,7 +293,7 @@ int main(int argc, char **argv) {
             }
         }
         f = frames[cur];
-        Vector3 L = { f->lattice[0], f->lattice[1], f->lattice[2] };
+        Vector3 L = v3(f->lattice[0], f->lattice[1], f->lattice[2]);
         Vector3 bc = { L.x / 2, L.y / 2, L.z / 2 };   // box center of this frame
 
         BeginDrawing();
@@ -296,56 +302,56 @@ int main(int argc, char **argv) {
             DrawGrid(20, 1.0f);
             if (show_box) DrawCubeWires(bc, L.x, L.y, L.z, DARKGRAY);
             for (int i = 0; i < f->n; ++i) {
-                Vector3 p = { f->x[i], f->y[i], f->z[i] };
+                Vector3 p = v3(f->x[i], f->y[i], f->z[i]);
                 Color col = types.color[type_of[i]];
                 float radius = (float)element_radius(f->label[i]);   // sigma_i / 2
                 DrawSphere(p, radius, col);
                 DrawSphereWires(p, radius, 8, 8, ColorBrightness(col, -0.4f));
                 if (show_v) {
-                    Vector3 v = { f->vx[i], f->vy[i], f->vz[i] };
-                    draw_arrow(p, radius, v, vscale, (Color){ 200, 30, 30, 255 });
+                    Vector3 v = v3(f->vx[i], f->vy[i], f->vz[i]);
+                    draw_arrow(p, radius, v, vscale, Color{ 200, 30, 30, 255 });
                 }
             }
         EndMode3D();
-        DrawTextEx(font, f->comment, (Vector2){ 10, 10 }, FONT_SIZE, 1, DARKGRAY);
-        DrawTextEx(font, TextFormat("N = %d   box: %g x %g x %g (%s)", f->n, L.x, L.y, L.z, f->periodic ? "periodic" : "open"), (Vector2){ 10, 38 }, FONT_SIZE, 1, DARKGRAY);
+        DrawTextEx(font, f->comment, Vector2{ 10, 10 }, FONT_SIZE, 1, DARKGRAY);
+        DrawTextEx(font, TextFormat("N = %d   box: %g x %g x %g (%s)", f->n, L.x, L.y, L.z, f->periodic ? "periodic" : "open"), Vector2{ 10, 38 }, FONT_SIZE, 1, DARKGRAY);
 
         // legend: one colored dot + label per particle type
         for (int k = 0; k < types.n; ++k) {
             float y = 76 + k * (FONT_SIZE + 6);
             DrawCircle(20, (int)y + FONT_SIZE / 2, 8, types.color[k]);
             DrawCircleLines(20, (int)y + FONT_SIZE / 2, 8, ColorBrightness(types.color[k], -0.4f));
-            DrawTextEx(font, types.label[k], (Vector2){ 36, y }, FONT_SIZE, 1, DARKGRAY);
+            DrawTextEx(font, types.label[k], Vector2{ 36, y }, FONT_SIZE, 1, DARKGRAY);
         }
         if (nframes > 1) {
             const char *status = TextFormat("frame %d / %d   %s   %.1f frames/s", cur, nframes - 1,
                                             playing ? "playing" : "paused", fps);
             float w = MeasureTextEx(font, status, FONT_SIZE, 1).x;
-            DrawTextEx(font, status, (Vector2){ GetScreenWidth() - w - 10, 10 }, FONT_SIZE, 1, DARKGRAY);
+            DrawTextEx(font, status, Vector2{ GetScreenWidth() - w - 10, 10 }, FONT_SIZE, 1, DARKGRAY);
             DrawTextEx(font, "[Space] play/pause   [Left/Right] step   [Up/Down] speed   [Home/0] frame 0",
-                       (Vector2){ 10, GetScreenHeight() - 54 }, 18, 1, GRAY);
+                       Vector2{ 10, (float)(GetScreenHeight() - 54) }, 18, 1, GRAY);
 
             // slider: track, played part, a tick per frame (if they fit), knob
             float kx = track.x + track.width * cur / (float)(nframes - 1);
             float cy = track.y + track.height / 2;
             DrawRectangleRounded(track, 1.0f, 6, LIGHTGRAY);
-            DrawRectangleRounded((Rectangle){ track.x, track.y, kx - track.x, track.height }, 1.0f, 6, SKYBLUE);
+            DrawRectangleRounded(Rectangle{ track.x, track.y, kx - track.x, track.height }, 1.0f, 6, SKYBLUE);
             if (track.width / (nframes - 1) >= 6)
                 for (int k = 0; k < nframes; ++k) {
                     float tx = track.x + track.width * k / (float)(nframes - 1);
-                    DrawLineEx((Vector2){ tx, track.y + track.height + 3 },
-                               (Vector2){ tx, track.y + track.height + 8 }, 1.0f, GRAY);
+                    DrawLineEx(Vector2{ tx, track.y + track.height + 3 },
+                               Vector2{ tx, track.y + track.height + 8 }, 1.0f, GRAY);
                 }
             Vector2 mouse = GetMousePosition();
             int hover = dragging || CheckCollisionPointRec(mouse, hit);
-            DrawCircleV((Vector2){ kx, cy }, hover ? 10 : 8, hover ? DARKBLUE : BLUE);
-            DrawCircleLinesV((Vector2){ kx, cy }, hover ? 10 : 8, RAYWHITE);
+            DrawCircleV(Vector2{ kx, cy }, hover ? 10 : 8, hover ? DARKBLUE : BLUE);
+            DrawCircleLinesV(Vector2{ kx, cy }, hover ? 10 : 8, RAYWHITE);
             const char *lbl = TextFormat("%d", cur);
             float lw = MeasureTextEx(font, lbl, 16, 1).x;
-            DrawTextEx(font, lbl, (Vector2){ kx - lw / 2, track.y - 30 }, 16, 1, DARKGRAY);
+            DrawTextEx(font, lbl, Vector2{ kx - lw / 2, track.y - 30 }, 16, 1, DARKGRAY);
         }
         DrawTextEx(font, "left drag: rotate   right drag: pan   wheel: zoom   [R] reset   [V] velocities   [+/-] arrow length   [B] box",
-                   (Vector2){ 10, GetScreenHeight() - 30 }, 18, 1, GRAY);
+                   Vector2{ 10, (float)(GetScreenHeight() - 30) }, 18, 1, GRAY);
         EndDrawing();
     }
 

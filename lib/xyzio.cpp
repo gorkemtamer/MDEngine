@@ -22,23 +22,23 @@
 
 // Allocate a frame with n rows. All columns are allocated; caller fills them.
 XYZFrame* xyz_alloc(int n) {
-    XYZFrame *f = malloc(sizeof(XYZFrame));
+    XYZFrame *f = static_cast<XYZFrame*>(malloc(sizeof(XYZFrame)));
     if (!f) return NULL;
 
     f->n = n;
     f->comment[0] = '\0';
     f->lattice[0] = f->lattice[1] = f->lattice[2] = 0.0;
     f->periodic = -1;      // caller must choose PBC (1) or OBC (0)
-    f->label = malloc(n * sizeof(*f->label));
-    f->x  = malloc(n * sizeof(double));
-    f->y  = malloc(n * sizeof(double));
-    f->z  = malloc(n * sizeof(double));
-    f->vx = malloc(n * sizeof(double));
-    f->vy = malloc(n * sizeof(double));
-    f->vz = malloc(n * sizeof(double));
-    f->fx = calloc(n, sizeof(double));
-    f->fy = calloc(n, sizeof(double));
-    f->fz = calloc(n, sizeof(double));
+    f->label = static_cast<char (*)[LABEL_LEN]>(malloc(n * sizeof(*f->label)));
+    f->x  = static_cast<double*>(malloc(n * sizeof(double)));
+    f->y  = static_cast<double*>(malloc(n * sizeof(double)));
+    f->z  = static_cast<double*>(malloc(n * sizeof(double)));
+    f->vx = static_cast<double*>(malloc(n * sizeof(double)));
+    f->vy = static_cast<double*>(malloc(n * sizeof(double)));
+    f->vz = static_cast<double*>(malloc(n * sizeof(double)));
+    f->fx = static_cast<double*>(calloc(n, sizeof(double)));
+    f->fy = static_cast<double*>(calloc(n, sizeof(double)));
+    f->fz = static_cast<double*>(calloc(n, sizeof(double)));
     f->epot = 0.0;
     f->forces_valid = 0;
 

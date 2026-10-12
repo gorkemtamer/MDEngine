@@ -24,8 +24,8 @@ int ComputeForces(XYZFrame *f) {
     }
 
     // per-particle sigma and epsilon, looked up once instead of once per pair
-    double *sig = malloc(n * sizeof(double));
-    double *eps = malloc(n * sizeof(double));
+    double *sig = static_cast<double*>(malloc(n * sizeof(double)));
+    double *eps = static_cast<double*>(malloc(n * sizeof(double)));
     if (!sig || !eps) {
         fprintf(stderr, "ComputeForces: allocation failed for n=%d\n", n);
         free(sig); free(eps);
