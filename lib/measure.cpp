@@ -10,7 +10,7 @@
 double KineticEnergy(const XYZFrame *f) {
     double ke = 0.0;
     for (int i = 0; i < f->n; ++i)
-        ke += 0.5 * element_mass(f->label[i]) *
+        ke += 0.5 * element_mass(f->label(i)) *
               (f->vx[i]*f->vx[i] + f->vy[i]*f->vy[i] + f->vz[i]*f->vz[i]);
     return ke;
 }

@@ -12,13 +12,8 @@
 
 int ComputeForces(XYZFrame *f) {
     const int n = f->n;
-    const double *L = f->lattice;
+    const double L[3] = {f -> box.x, f-> box.y, f-> box.z};
     const Vec3 box{ L[0], L[1], L[2]};
-
-    if (f->periodic != 0 && f->periodic != 1) {
-        fprintf(stderr, "ComputeForces: boundary conditions not set (periodic = %d)\n", f->periodic);
-        return -1;
-    }
 
     // per-particle sigma and epsilon, looked up once instead of once per pair
     double *sig = static_cast<double*>(malloc(n * sizeof(double)));
@@ -30,11 +25,11 @@ int ComputeForces(XYZFrame *f) {
     }
     double sig_max = 0;
     for (int i = 0; i < n; ++i) {
-        double r = element_radius(f->label[i]);
-        double e = element_epsilon(f->label[i]);
+        double r = element_radius(f->label(i));
+        double e = element_epsilon(f->label(i));
         if (r < 0 || e < 0) {
             fprintf(stderr, "ComputeForces: no LJ parameters for label '%s' (particle %d)\n",
-                    f->label[i], i);
+                    f->label(i), i);
             free(sig); free(eps);
             return -1;
         }
@@ -44,7 +39,7 @@ int ComputeForces(XYZFrame *f) {
     }
 
     // minimum image only sees the nearest copy, so the cutoff sphere must fit in half the box
-    if (f->periodic) {
+    if (f-> boundary == Boundary::Periodic) {
         double rc_max = LJ_CUTOFF * sig_max;
         for (int k = 0; k < 3; ++k)
             if (L[k] < 2.0 * rc_max) {
@@ -65,7 +60,7 @@ int ComputeForces(XYZFrame *f) {
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
             Vec3 d = Vec3{ f->x[i], f->y[i], f->z[i] } - Vec3{ f->x[j], f->y[j], f->z[j] };
-            if (f->periodic) d = min_image(d,box);
+            if (f-> boundary == Boundary::Periodic) d = min_image(d,box);
             double r2 = norm2(d);
 
             double s  = 0.5 * (sig[i] + sig[j]);      // Lorentz
@@ -115,17 +110,17 @@ XYZFrame* VelocityVerletStep(XYZFrame *f, double dt) {
 
     // half kick + drift
     for (int i = 0; i < f->n; ++i) {
-        double h = 0.5 * dt / element_mass(f->label[i]);
+        double h = 0.5 * dt / element_mass(f->label(i));
         f->vx[i] += h * f->fx[i];
         f->vy[i] += h * f->fy[i];
         f->vz[i] += h * f->fz[i];
         f->x[i] += dt * f->vx[i];
         f->y[i] += dt * f->vy[i];
         f->z[i] += dt * f->vz[i];
-        if (f->periodic) {
-            f->x[i] = wrap(f->x[i], f->lattice[0]);
-            f->y[i] = wrap(f->y[i], f->lattice[1]);
-            f->z[i] = wrap(f->z[i], f->lattice[2]);
+        if (f-> boundary == Boundary::Periodic) {
+            f->x[i] = wrap(f->x[i], f-> box.x);
+            f->y[i] = wrap(f->y[i], f-> box.y);
+            f->z[i] = wrap(f->z[i], f-> box.z);
         }
     }
     f->forces_valid = 0;
@@ -135,7 +130,7 @@ XYZFrame* VelocityVerletStep(XYZFrame *f, double dt) {
 
     // second half kick
     for (int i = 0; i < f->n; ++i) {
-        double h = 0.5 * dt / element_mass(f->label[i]);
+        double h = 0.5 * dt / element_mass(f->label(i));
         f->vx[i] += h * f->fx[i];
         f->vy[i] += h * f->fy[i];
         f->vz[i] += h * f->fz[i];

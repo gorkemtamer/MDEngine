@@ -34,15 +34,15 @@ int main(){
     XYZFrame *input = xyz_read(INPUT_DIR "test.xyz");
     if (!input) return 1;
     printf("Number of particles: %d\n", input->n);
-    printf("Read the comment: %s\n",input->comment);
-    printf("Box (Lattice): %f %f %f, %s boundaries\n", input->lattice[0], input->lattice[1], input->lattice[2],
-           input->periodic ? "periodic" : "open");
+    printf("Read the comment: %s\n",input->comment.c_str());
+    printf("Box (Lattice): %f %f %f, %s boundaries\n", input->box.x, input->box.y, input->box.z,
+         boundary_name(input->boundary));
     printf("Now the coord and velocities:\n");
     printf("%-4s %10s %10s %10s %10s %10s %10s\n",
            "lbl", "x", "y", "z", "vx", "vy", "vz");
     for (int i = 0; i < input->n; ++i)
         printf("%-4s %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f\n",
-               input->label[i], input->x[i], input->y[i], input->z[i],
+               input->label(i), input->x[i], input->y[i], input->z[i],
                input->vx[i], input->vy[i], input->vz[i]);
     printf("--------------------------------\n");
     printf("Testing Velocity-Verlet scheme for 100 timesteps\n");
@@ -82,8 +82,9 @@ int main(){
             xyz_free(geom);
             return 1;
         }
-
-        snprintf(geom->comment, sizeof(geom->comment), "MD step %d, t = %g", step, step * dt);
+        char buf[64];
+        snprintf(buf, sizeof(buf), "MD step %d, t = %g", step, step * dt);
+        geom -> comment = buf;
         char path[512];
         snprintf(path, sizeof(path), OUTPUT_DIR "step%d.xyz", step);
         if (xyz_write(path, geom) != 0) { xyz_free(geom); return 1; }

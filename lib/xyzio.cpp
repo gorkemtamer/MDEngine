@@ -1,13 +1,3 @@
-// xyz_io.c
-//
-// Definition of XYZ Frame and helper functions to read and write XYZ Frame 
-// to a straight CSV file
-// XYZ Frame structure also straightforward:
-// each column gives the coordinates and velocities of the particles in the 
-// system
-//
-// TODO: later make this a library
-//
 // Test:   make xyzio_test && bin/xyzio_test   (writes into output/)
 
 #include <stdio.h>
@@ -21,43 +11,8 @@
 #include "params.h"
 #include "vec3.h"
 
-// Allocate a frame with n rows. All columns are allocated; caller fills them.
-XYZFrame* xyz_alloc(int n) {
-    XYZFrame *f = static_cast<XYZFrame*>(malloc(sizeof(XYZFrame)));
-    if (!f) return NULL;
-
-    f->n = n;
-    f->comment[0] = '\0';
-    f->lattice[0] = f->lattice[1] = f->lattice[2] = 0.0;
-    f->periodic = -1;      // caller must choose PBC (1) or OBC (0)
-    f->label = static_cast<char (*)[LABEL_LEN]>(malloc(n * sizeof(*f->label)));
-    f->x  = static_cast<double*>(malloc(n * sizeof(double)));
-    f->y  = static_cast<double*>(malloc(n * sizeof(double)));
-    f->z  = static_cast<double*>(malloc(n * sizeof(double)));
-    f->vx = static_cast<double*>(malloc(n * sizeof(double)));
-    f->vy = static_cast<double*>(malloc(n * sizeof(double)));
-    f->vz = static_cast<double*>(malloc(n * sizeof(double)));
-    f->fx = static_cast<double*>(calloc(n, sizeof(double)));
-    f->fy = static_cast<double*>(calloc(n, sizeof(double)));
-    f->fz = static_cast<double*>(calloc(n, sizeof(double)));
-    f->epot = 0.0;
-    f->forces_valid = 0;
-
-    if (!f->label || !f->x || !f->y || !f->z || !f->vx || !f->vy || !f->vz ||
-        !f->fx || !f->fy || !f->fz) {
-        fprintf(stderr, "xyz_alloc: allocation failed for n=%d\n", n);
-        xyz_free(f); return NULL;
-    }
-    return f;
-}
-
 void xyz_free(XYZFrame *f) {
-    if (!f) return;
-    free(f->label);
-    free(f->x); free(f->y); free(f->z);
-    free(f->vx); free(f->vy); free(f->vz);
-    free(f->fx); free(f->fy); free(f->fz);
-    free(f);
+    delete f; //free vectors!!!    
 }
 
 // ---------------------------------------------------------------------
@@ -78,13 +33,13 @@ int xyz_write(const char *path, const XYZFrame *f) {
     if (!fp) { perror("xyz_write: fopen"); return -1; }
 
     fprintf(fp, "%d\n", f->n);
-    fprintf(fp, "%s\n", f->comment);
+    fprintf(fp, "%s\n", f->comment.c_str());
     fprintf(fp, "Lattice %.6f %.6f %.6f periodic %d\n",
-            f->lattice[0], f->lattice[1], f->lattice[2], f->periodic);
+            f->box.x, f->box.y, f->box.z, boundary_flag(f->boundary));
 
     for (int i = 0; i < f->n; ++i) {
         fprintf(fp, "%s %.6f %.6f %.6f %.6f %.6f %.6f\n",
-                f->label[i], f->x[i], f->y[i], f->z[i],
+                f->label(i), f->x[i], f->y[i], f->z[i],
                 f->vx[i], f->vy[i], f->vz[i]);
     }
 
@@ -108,19 +63,20 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
         return NULL;
     }
 
-    XYZFrame *f = xyz_alloc(n);
-    if (!f) return NULL;
+    // 1 1 1 box, scaled, PBC
+    XYZFrame *f = new XYZFrame(n, Vec3{scale, scale, scale},Boundary::Periodic);
 
-    snprintf(f->comment, sizeof(f->comment), "random geometry, n=%d, scale=%g", n, scale);
-    f->lattice[0] = f->lattice[1] = f->lattice[2] = scale;   // 1 1 1 box, scaled
-    f->periodic = 1;      //(now PBC revert back to 0) open boundaries: the box is only the region particles are placed in
+    char buf[256];
+    snprintf(buf, sizeof(buf),"random geometry, n=%d, scale=%g", n, scale);
+    f->comment = buf;
+    const int argon = element_index("Ar");
 
     // Rejection sampling: place particle i, check the first i+1 particles
     // (by temporarily setting f->n), redraw i if it is too close to any
     // earlier one. Gives up if the box is too dense.
     const int max_tries = 10000;
     for (int i = 0; i < n; ++i) {
-        snprintf(f->label[i], LABEL_LEN, "Ar");
+        f->type[i] = argon;
         f->n = i + 1;
         int tries = 0;
         do {
@@ -142,7 +98,7 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
     Vec3 p{}; // total momentum
     double mtot = 0; // total mass
     for (int i = 0; i < n; ++i) {
-        double m = element_mass(f->label[i]);
+        double m = element_mass(f->label(i));
         f->vx[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
         f->vy[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
         f->vz[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
@@ -180,32 +136,32 @@ XYZFrame* xyz_read(const char *path) {
         return NULL;
     }
 
-    XYZFrame *f = xyz_alloc(n);
-    if (!f) { fclose(fp); return NULL; }
-
     // line 2: comment (keep the whole line, minus trailing newline)
     if (!fgets(line, sizeof(line), fp)) {
         fprintf(stderr, "xyz_read: failed to read comment line\n");
-        xyz_free(f); fclose(fp);
+        fclose(fp);
         return NULL;
     }
     line[strcspn(line, "\n")] = '\0';
-    size_t len = strlen(line);
-    if (len >= sizeof(f->comment)) len = sizeof(f->comment) - 1;  // truncate long comments
-    memcpy(f->comment, line, len);
-    f->comment[len] = '\0';
+    std::string comment = line;
 
     // line 3: box lengths and boundary conditions, required
+    Vec3 box;
+    int flag;
+    Boundary bc;
     if (!fgets(line, sizeof(line), fp) ||
         sscanf(line, "Lattice %lf %lf %lf periodic %d",
-               &f->lattice[0], &f->lattice[1], &f->lattice[2], &f->periodic) != 4 ||
-        f->lattice[0] <= 0 || f->lattice[1] <= 0 || f->lattice[2] <= 0 ||
-        (f->periodic != 0 && f->periodic != 1)) {
+            &box.x, &box.y, &box.z, &flag) != 4 ||
+            box.x <= 0 || box.y <= 0 || box.z <= 0 ||
+            !boundary_from_flag(flag, bc)) {
         fprintf(stderr, "xyz_read: line 3 must be 'Lattice Lx Ly Lz periodic P' "
                         "with positive lengths and P = 0 (open) or 1 (periodic)\n");
-        xyz_free(f); fclose(fp);
+        fclose(fp);
         return NULL;
     }
+
+    XYZFrame *f = new XYZFrame(n, box, bc); //box and flag already checked: cannot throw
+    f-> comment = comment;
 
     // remaining lines: label x y z vx vy vz
     for (int i = 0; i < n; ++i) {
@@ -214,14 +170,22 @@ XYZFrame* xyz_read(const char *path) {
             xyz_free(f); fclose(fp);
             return NULL;
         }
+        char lbl[LABEL_LEN];
         int ok = sscanf(line, "%7s %lf %lf %lf %lf %lf %lf",
-                         f->label[i], &f->x[i], &f->y[i], &f->z[i],
+                         lbl, &f->x[i], &f->y[i], &f->z[i],
                          &f->vx[i], &f->vy[i], &f->vz[i]);
         if (ok != 7) {
             fprintf(stderr, "xyz_read: malformed row %d (parsed %d fields)\n", i, ok);
             xyz_free(f); fclose(fp);
             return NULL;
         }
+        f->type[i] = element_index(lbl);
+        if (f->type[i]<0)
+        {
+            fprintf(stderr, "xyz_read: unknown element '%s' in row %d, add it to elements.cpp\n",lbl,i);
+            xyz_free(f); fclose(fp);
+            return NULL;
+        }        
     }
 
     fclose(fp);
@@ -238,14 +202,14 @@ XYZFrame* xyz_read(const char *path) {
 #ifdef XYZIO_TEST
 // print header, lattice and all rows of a frame
 static void print_frame(const XYZFrame *f) {
-    printf("Read back %d rows, comment: \"%s\"\n", f->n, f->comment);
-    printf("Lattice: %g %g %g, %s boundaries\n", f->lattice[0], f->lattice[1], f->lattice[2],
-           f->periodic ? "periodic" : "open");
+    printf("Read back %d rows, comment: \"%s\"\n", f->n, f->comment.c_str());
+    printf("Lattice: %g %g %g, %s boundaries\n", f->box.x, f->box.y, f->box.z,
+           boundary_name(f->boundary));
     printf("%-4s %10s %10s %10s %10s %10s %10s\n",
            "lbl", "x", "y", "z", "vx", "vy", "vz");
     for (int i = 0; i < f->n; ++i) {
         printf("%-4s %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f\n",
-               f->label[i], f->x[i], f->y[i], f->z[i],
+               f->label(i), f->x[i], f->y[i], f->z[i],
                f->vx[i], f->vy[i], f->vz[i]);
     }
 }
@@ -259,13 +223,13 @@ int main(void) {
     const char *path = OUTPUT_DIR "test.xyz";
     int n = 4;
 
-    XYZFrame *out = xyz_alloc(n);
-    snprintf(out->comment, sizeof(out->comment), "test frame, n=%d", n);
-    out->lattice[0] = out->lattice[1] = out->lattice[2] = 10.0;
-    out->periodic = 1;
+    XYZFrame *out = new XYZFrame(n, Vec3{10.,10.,10.},Boundary::Periodic);
+    char buf[64];
+    snprintf(buf, sizeof(buf), "test frame, n=%d", n);
+    out->comment = buf;
 
     for (int i = 0; i < n; ++i) {
-        snprintf(out->label[i], LABEL_LEN, "Ar");
+        out->type[i] = element_index("Ar");
         out->x[i]  = i * 1.1;
         out->y[i]  = i * 2.2;
         out->z[i]  = i * 3.3;

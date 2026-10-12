@@ -192,9 +192,9 @@ int main(int argc, char **argv) {
             ok = 0;
         }
         for (int i = 0; ok && i < frames[k]->n; ++i)
-            if (strcmp(frames[k]->label[i], frames[0]->label[i]) != 0) {
+            if (frames[k]->type[i] != frames[0]->type[i]) {
                 fprintf(stderr, "viewer: particle %d is '%s' in %s but '%s' in %s\n",
-                        i, frames[k]->label[i], paths[k], frames[0]->label[i], paths[0]);
+                        i, frames[k]->label(i), paths[k], frames[0]->label(i), paths[0]);
                 ok = 0;
             }
         if (!ok) {
@@ -206,8 +206,8 @@ int main(int argc, char **argv) {
     XYZFrame *f = frames[0];                  // frame currently shown
 
     // camera centered on the first frame's box
-    Vector3 c = v3(f->lattice[0] / 2, f->lattice[1] / 2, f->lattice[2] / 2);
-    float Lmax = fmaxf(f->lattice[0], fmaxf(f->lattice[1], f->lattice[2]));
+    Vector3 c = v3(f->box.x / 2, f->box.y / 2, f->box.z / 2);
+    float Lmax = (float)fmax(f->box.x, fmax(f->box.y, f->box.z));
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);    // smoother sphere edges
     InitWindow(1000, 800, nframes == 1 ? GetFileName(paths[0])            // title: file name without folders
@@ -247,7 +247,7 @@ int main(int argc, char **argv) {
     // assign each particle a type (and thus a color) once, up front
     TypeTable types{};
     std::vector<int> type_of(f->n);
-    for (int i = 0; i < f->n; ++i) type_of[i] = type_index(&types, f->label[i]);
+    for (int i = 0; i < f->n; ++i) type_of[i] = type_index(&types, f->label(i));
 
     while (!WindowShouldClose()) {
         // frame slider along the bottom, above the help lines
@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
             }
         }
         f = frames[cur];
-        Vector3 L = v3(f->lattice[0], f->lattice[1], f->lattice[2]);
+        Vector3 L = v3(f->box.x, f->box.y, f->box.z);
         Vector3 bc = { L.x / 2, L.y / 2, L.z / 2 };   // box center of this frame
 
         BeginDrawing();
@@ -304,7 +304,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < f->n; ++i) {
                 Vector3 p = v3(f->x[i], f->y[i], f->z[i]);
                 Color col = types.color[type_of[i]];
-                float radius = (float)element_radius(f->label[i]);   // sigma_i / 2
+                float radius = (float)element_radius(f->label(i));   // sigma_i / 2
                 DrawSphere(p, radius, col);
                 DrawSphereWires(p, radius, 8, 8, ColorBrightness(col, -0.4f));
                 if (show_v) {
@@ -313,8 +313,8 @@ int main(int argc, char **argv) {
                 }
             }
         EndMode3D();
-        DrawTextEx(font, f->comment, Vector2{ 10, 10 }, FONT_SIZE, 1, DARKGRAY);
-        DrawTextEx(font, TextFormat("N = %d   box: %g x %g x %g (%s)", f->n, L.x, L.y, L.z, f->periodic ? "periodic" : "open"), Vector2{ 10, 38 }, FONT_SIZE, 1, DARKGRAY);
+        DrawTextEx(font, f->comment.c_str(), Vector2{ 10, 10 }, FONT_SIZE, 1, DARKGRAY);
+        DrawTextEx(font, TextFormat("N = %d   box: %g x %g x %g (%s)", f->n, L.x, L.y, L.z, boundary_name(f->boundary)), Vector2{ 10, 38 }, FONT_SIZE, 1, DARKGRAY);
 
         // legend: one colored dot + label per particle type
         for (int k = 0; k < types.n; ++k) {
