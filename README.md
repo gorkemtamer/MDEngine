@@ -43,3 +43,5 @@ hardcoded to a LJ potential (epot is computed directly from dU/dr analytically)
 - current implementation mostly implemented assuming PBC, OBC will come later
 - new element data structure (necessary parameters computed once during compilation and
 no further compute is needed)
+(index search instead of string search)
+- Complete overhaul of the XYZFrame into a proper class (check frame.h for starters)
