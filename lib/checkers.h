@@ -10,6 +10,10 @@
 // decides what to report.
 // ---------------------------------------------------------------------
 
+// 1 if particle i is closer than the minimum distance
+// to any particle j < i, 0 otherwise. Used when placing particles one by one.
+int TooCloseToEarlier(const XYZFrame *f, int i);
+
 // Checks every pair of particles against the minimum distance
 // MIN_DIST_FACTOR * (element_radius(i) + element_radius(j)), in reduced
 // units (see elements.h / elements.cpp).
@@ -22,6 +26,7 @@
 //         >0  number of pairs that are too close,
 //         -1  a particle without a radius in elements.cpp (printed to stderr;
 //             cannot happen for frames from xyz_read, which rejects unknown labels).
+
 int CheckMinDistance(const XYZFrame *f);
 
 #endif

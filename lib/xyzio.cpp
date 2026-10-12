@@ -32,15 +32,15 @@ int xyz_write(const char *path, const XYZFrame *f) {
     FILE *fp = fopen(path, "w");
     if (!fp) { perror("xyz_write: fopen"); return -1; }
 
-    fprintf(fp, "%d\n", f->n);
+    fprintf(fp, "%d\n", f->n());
     fprintf(fp, "%s\n", f->comment.c_str());
     fprintf(fp, "Lattice %.6f %.6f %.6f periodic %d\n",
-            f->box.x, f->box.y, f->box.z, boundary_flag(f->boundary));
+            f->box().x, f->box().y, f->box().z, boundary_flag(f->boundary()));
 
-    for (int i = 0; i < f->n; ++i) {
+    for (int i = 0; i < f->n(); ++i) {
+        Vec3 r = f-> pos(i), v = f->vel(i);
         fprintf(fp, "%s %.6f %.6f %.6f %.6f %.6f %.6f\n",
-                f->label(i), f->x[i], f->y[i], f->z[i],
-                f->vx[i], f->vy[i], f->vz[i]);
+                f->label(i), r.x,r.y,r.z,v.x,v.y,v.z);
     }
 
     fclose(fp);
@@ -70,49 +70,42 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
     snprintf(buf, sizeof(buf),"random geometry, n=%d, scale=%g", n, scale);
     f->comment = buf;
     const int argon = element_index("Ar");
+    for (int i = 0; i < n; ++i) f->set_element(i,argon);
 
-    // Rejection sampling: place particle i, check the first i+1 particles
-    // (by temporarily setting f->n), redraw i if it is too close to any
-    // earlier one. Gives up if the box is too dense.
+    // Rejection sampling: place particle i, redraw it while it is too close
+    // to any earlier one (TooCloseToEarlier). Gives up if the box is too dense.
     const int max_tries = 10000;
     for (int i = 0; i < n; ++i) {
-        f->type[i] = argon;
-        f->n = i + 1;
         int tries = 0;
         do {
-            if (++tries > max_tries) {
-                fprintf(stderr, "xyz_random: could not place particle %d after %d tries, "
-                                "box too small for n=%d (increase scale)\n", i, max_tries, n);
-                f->n = n; xyz_free(f);
+            if(++tries > max_tries) {
+                fprintf(stderr, "xyz_random: could not place particle %d after %d tries,"
+                "box too small for n=%d (increase scale)\n", i, max_tries, n);                
+                xyz_free(f);
                 return NULL;
             }
-            f->x[i] = scale * rng_uniform(rng);
-            f->y[i] = scale * rng_uniform(rng);
-            f->z[i] = scale * rng_uniform(rng);
-        } while (CheckMinDistance(f) != 0);
+            Vec3 r{ scale*rng_uniform(rng), scale*rng_uniform(rng), scale*rng_uniform(rng)};
+            f->set_pos(i, r);
+        } while (TooCloseToEarlier(f,i));
     }
-
-    f->n = n;
 
     // Maxwell-Boltzmann velocities at DEFAULT_T, using each particle's mass
     Vec3 p{}; // total momentum
     double mtot = 0; // total mass
     for (int i = 0; i < n; ++i) {
-        double m = element_mass(f->label(i));
-        f->vx[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
-        f->vy[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
-        f->vz[i] = rng_MaxwellBoltzmann(rng, DEFAULT_T, m);
-        p += m * Vec3{ f->vx[i], f->vy[i], f->vz[i] };
+        double m = f->mass(i);
+        Vec3 v{
+            rng_MaxwellBoltzmann(rng, DEFAULT_T, m),
+            rng_MaxwellBoltzmann(rng, DEFAULT_T, m),
+            rng_MaxwellBoltzmann(rng, DEFAULT_T, m)};
+        f->set_vel(i,v);
+        p += m * v;
         mtot += m;
     }
 
     // remove the center-of-mass velocity: total momentum becomes zero
     const Vec3 vcm = p / mtot;
-    for (int i = 0; i < n; ++i) {
-        f->vx[i] -= vcm.x;
-        f->vy[i] -= vcm.y;
-        f->vz[i] -= vcm.z;
-    }
+    for (int i = 0; i < n; ++i) f->set_vel(i,f->vel(i) - vcm);
 
     if (xyz_write(path, f) != 0) { xyz_free(f); return NULL; }
     return f;
@@ -171,21 +164,24 @@ XYZFrame* xyz_read(const char *path) {
             return NULL;
         }
         char lbl[LABEL_LEN];
+        Vec3 r, v;
         int ok = sscanf(line, "%7s %lf %lf %lf %lf %lf %lf",
-                         lbl, &f->x[i], &f->y[i], &f->z[i],
-                         &f->vx[i], &f->vy[i], &f->vz[i]);
+                         lbl, &r.x, &r.y, &r.z, &v.x, &v.y, &v.z);
         if (ok != 7) {
             fprintf(stderr, "xyz_read: malformed row %d (parsed %d fields)\n", i, ok);
             xyz_free(f); fclose(fp);
             return NULL;
         }
-        f->type[i] = element_index(lbl);
-        if (f->type[i]<0)
+        int k = element_index(lbl);
+        if (k<0)
         {
             fprintf(stderr, "xyz_read: unknown element '%s' in row %d, add it to elements.cpp\n",lbl,i);
             xyz_free(f); fclose(fp);
             return NULL;
         }        
+        f->set_element(i,k);
+        f->set_pos(i,r);
+        f->set_vel(i,v);
     }
 
     fclose(fp);
@@ -202,15 +198,15 @@ XYZFrame* xyz_read(const char *path) {
 #ifdef XYZIO_TEST
 // print header, lattice and all rows of a frame
 static void print_frame(const XYZFrame *f) {
-    printf("Read back %d rows, comment: \"%s\"\n", f->n, f->comment.c_str());
-    printf("Lattice: %g %g %g, %s boundaries\n", f->box.x, f->box.y, f->box.z,
-           boundary_name(f->boundary));
+    printf("Read back %d rows, comment: \"%s\"\n", f->n(), f->comment.c_str());
+    printf("Lattice: %g %g %g, %s boundaries\n", f->box().x, f->box().y, f->box().z,
+           boundary_name(f->boundary()));
     printf("%-4s %10s %10s %10s %10s %10s %10s\n",
            "lbl", "x", "y", "z", "vx", "vy", "vz");
-    for (int i = 0; i < f->n; ++i) {
+    for (int i = 0; i < f->n(); ++i) {
+        Vec3 r = f-> pos(i), v = f->vel(i);
         printf("%-4s %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f\n",
-               f->label(i), f->x[i], f->y[i], f->z[i],
-               f->vx[i], f->vy[i], f->vz[i]);
+               f->label(i), r.x,r.y,r.z,v.x,v.y,v.z);
     }
 }
 
@@ -229,13 +225,9 @@ int main(void) {
     out->comment = buf;
 
     for (int i = 0; i < n; ++i) {
-        out->type[i] = element_index("Ar");
-        out->x[i]  = i * 1.1;
-        out->y[i]  = i * 2.2;
-        out->z[i]  = i * 3.3;
-        out->vx[i] = 0.1 * i;
-        out->vy[i] = -0.1 * i;
-        out->vz[i] = 0.05 * i;
+        out->set_element(i, element_index("Ar"));
+        out->set_pos(i, Vec3{ i * 1.1, i * 2.2, i * 3.3 });
+        out->set_vel(i, Vec3{ 0.1 * i, -0.1 * i, 0.05 * i });
     }
 
     if (xyz_write(path, out) != 0) { xyz_free(out); return 1; }
@@ -255,7 +247,7 @@ int main(void) {
     const double tol = 1e-6;
     int mismatch = 0;
     for (int i = 0; i < n; ++i) {
-        if (fabs(out->x[i] - in->x[i]) > tol || fabs(out->vz[i] - in->vz[i]) > tol) mismatch = 1;
+        if (fabs(out->pos(i).x - in->pos(i).x) > tol || fabs(out->vel(i).z - in->vel(i).z) > tol) mismatch = 1;
     }
     printf(mismatch ? "MISMATCH after round-trip!\n" : "Round-trip OK (within 1e-6 tolerance).\n");
 

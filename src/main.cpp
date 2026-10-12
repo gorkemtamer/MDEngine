@@ -33,17 +33,18 @@ int main(){
     printf("Read the test input now:\n");
     XYZFrame *input = xyz_read(INPUT_DIR "test.xyz");
     if (!input) return 1;
-    printf("Number of particles: %d\n", input->n);
+    printf("Number of particles: %d\n", input->n());
     printf("Read the comment: %s\n",input->comment.c_str());
-    printf("Box (Lattice): %f %f %f, %s boundaries\n", input->box.x, input->box.y, input->box.z,
-         boundary_name(input->boundary));
+    printf("Box (Lattice): %f %f %f, %s boundaries\n", input->box().x, input->box().y, input->box().z,
+         boundary_name(input->boundary()));
     printf("Now the coord and velocities:\n");
     printf("%-4s %10s %10s %10s %10s %10s %10s\n",
            "lbl", "x", "y", "z", "vx", "vy", "vz");
-    for (int i = 0; i < input->n; ++i)
+    for (int i = 0; i < input->n(); ++i) {
+        Vec3 r = input->pos(i), v = input->vel(i);
         printf("%-4s %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f\n",
-               input->label(i), input->x[i], input->y[i], input->z[i],
-               input->vx[i], input->vy[i], input->vz[i]);
+               input->label(i), r.x, r.y, r.z, v.x, v.y, v.z);
+    }
     printf("--------------------------------\n");
     printf("Testing Velocity-Verlet scheme for 100 timesteps\n");
     xyz_free(input);

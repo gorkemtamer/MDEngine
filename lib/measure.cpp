@@ -9,14 +9,13 @@
 
 double KineticEnergy(const XYZFrame *f) {
     double ke = 0.0;
-    for (int i = 0; i < f->n; ++i)
-        ke += 0.5 * element_mass(f->label(i)) *
-              (f->vx[i]*f->vx[i] + f->vy[i]*f->vy[i] + f->vz[i]*f->vz[i]);
+    for (int i = 0; i < f->n(); ++i)
+        ke += 0.5 * f->mass(i) * norm2(f->vel(i));
     return ke;
 }
 
 double PotentialEnergy(XYZFrame *f) {
     // one LJ implementation for forces and energy: reuse ComputeForces
-    if (!f->forces_valid && ComputeForces(f) != 0) return NAN;
-    return f->epot;
+    if (!f->forces_valid() && ComputeForces(f) != 0) return NAN;
+    return f->PotentialEnergy();
 }

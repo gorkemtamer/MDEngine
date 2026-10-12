@@ -17,11 +17,12 @@ struct Vec3{
 };
 
 /*vector operations*/
-inline Vec3 operator+(Vec3 a, const Vec3& b) {return a += b;}
-inline Vec3 operator-(Vec3 a, const Vec3& b) {return a -= b;}
-inline Vec3 operator*(Vec3 a, double s) {return a *= s;}
-inline Vec3 operator*(double s, Vec3 a) {return a *= s;}
-inline Vec3 operator/(Vec3 a, double s) {return a /= s;}
+inline Vec3 operator+(Vec3 a, const Vec3& b) {return a += b;}// a+b
+inline Vec3 operator-(Vec3 a, const Vec3& b) {return a -= b;}// a-b
+inline Vec3 operator-(Vec3 a) {return { -a.x, -a.y, -a.z};}  //a->-a
+inline Vec3 operator*(Vec3 a, double s) {return a *= s;} // a->s*a 
+inline Vec3 operator*(double s, Vec3 a) {return a *= s;} // a -> a*s (commute)
+inline Vec3 operator/(Vec3 a, double s) {return a /= s;} // a -> a/s
 
 /*dot-cross products and norms*/
 inline double dot(const Vec3& a, const Vec3& b) {return a.x*b.x + a.y*b.y + a.z*b.z;}

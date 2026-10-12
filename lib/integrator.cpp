@@ -11,8 +11,8 @@
 #include "vec3.h"
 
 int ComputeForces(XYZFrame *f) {
-    const int n = f->n;
-    const double L[3] = {f -> box.x, f-> box.y, f-> box.z};
+    const int n = f->n();
+    const double L[3] = {f -> box().x, f-> box().y, f-> box().z};
     const Vec3 box{ L[0], L[1], L[2]};
 
     // per-particle sigma and epsilon, looked up once instead of once per pair
@@ -39,7 +39,7 @@ int ComputeForces(XYZFrame *f) {
     }
 
     // minimum image only sees the nearest copy, so the cutoff sphere must fit in half the box
-    if (f-> boundary == Boundary::Periodic) {
+    if (f-> boundary() == Boundary::Periodic) {
         double rc_max = LJ_CUTOFF * sig_max;
         for (int k = 0; k < 3; ++k)
             if (L[k] < 2.0 * rc_max) {
@@ -50,8 +50,7 @@ int ComputeForces(XYZFrame *f) {
             }
     }
 
-    for (int i = 0; i < n; ++i) f->fx[i] = f->fy[i] = f->fz[i] = 0.0;
-
+    f->clear_forces();
     // energy of the plain LJ potential at the cutoff, per unit 4*eps_ij
     const double sc6 = pow(1.0 / LJ_CUTOFF, 6);
     const double shift = sc6 * sc6 - sc6;
@@ -59,8 +58,8 @@ int ComputeForces(XYZFrame *f) {
     double U = 0.0;
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
-            Vec3 d = Vec3{ f->x[i], f->y[i], f->z[i] } - Vec3{ f->x[j], f->y[j], f->z[j] };
-            if (f-> boundary == Boundary::Periodic) d = min_image(d,box);
+            Vec3 d = f->pos(i) - f->pos(j);
+            if (f-> boundary() == Boundary::Periodic) d = min_image(d,box);
             double r2 = norm2(d);
 
             double s  = 0.5 * (sig[i] + sig[j]);      // Lorentz
@@ -82,15 +81,13 @@ int ComputeForces(XYZFrame *f) {
             // F_i = -dV/dr * (r_i - r_j)/r = 24 eps (2 s12 - s6) / r^2 * (r_i - r_j)
             double fr = 24.0 * e * (2.0 * s12 - s6) / r2;
             Vec3 F = fr * d; //force on i from j
-            f->fx[i] += F.x;  f->fx[j] -= F.x; // Newton's third law:
-            f->fy[i] += F.y;  f->fy[j] -= F.y; // force on j is minus
-            f->fz[i] += F.z;  f->fz[j] -= F.z; // the force on i
+            f->add_force(i,F);
+            f->add_force(j,-F); //Newton's third law
         }
     }
 
     free(sig); free(eps);
-    f->epot = U;
-    f->forces_valid = 1;
+    f->set_potential_energy(U);
     return 0;
 }
 
@@ -106,34 +103,28 @@ XYZFrame* VelocityVerletStep(XYZFrame *f, double dt) {
     }
 
     // F(t): only needed on the first step, afterwards it is kept from the previous step
-    if (!f->forces_valid && ComputeForces(f) != 0) return NULL;
+    if (!f->forces_valid() && ComputeForces(f) != 0) return NULL;
+
+    const Vec3 L = f->box();
+    const bool periodic = f->boundary()==Boundary::Periodic;
 
     // half kick + drift
-    for (int i = 0; i < f->n; ++i) {
-        double h = 0.5 * dt / element_mass(f->label(i));
-        f->vx[i] += h * f->fx[i];
-        f->vy[i] += h * f->fy[i];
-        f->vz[i] += h * f->fz[i];
-        f->x[i] += dt * f->vx[i];
-        f->y[i] += dt * f->vy[i];
-        f->z[i] += dt * f->vz[i];
-        if (f-> boundary == Boundary::Periodic) {
-            f->x[i] = wrap(f->x[i], f-> box.x);
-            f->y[i] = wrap(f->y[i], f-> box.y);
-            f->z[i] = wrap(f->z[i], f-> box.z);
-        }
+    for (int i = 0; i < f->n(); ++i) {
+        double h = 0.5 * dt / f->mass(i);
+        Vec3 v = f->vel(i) + h * f->force(i);
+        f->set_vel(i,v);
+        Vec3 r = f->pos(i)+dt*v;
+        if (periodic) r = Vec3{wrap(r.x,L.x),wrap(r.y,L.y),wrap(r.z,L.z)};
+        f -> set_pos(i,r);
     }
-    f->forces_valid = 0;
 
     // F(t + dt)
     if (ComputeForces(f) != 0) return NULL;
 
     // second half kick
-    for (int i = 0; i < f->n; ++i) {
-        double h = 0.5 * dt / element_mass(f->label(i));
-        f->vx[i] += h * f->fx[i];
-        f->vy[i] += h * f->fy[i];
-        f->vz[i] += h * f->fz[i];
+    for (int i = 0; i < f->n(); ++i) {
+        double h = 0.5 * dt / f->mass(i);
+        f->set_vel(i,f->vel(i)+h*f->force(i));
     }
     return f;
 }

@@ -89,6 +89,7 @@ static int type_index(TypeTable *t, const char *label) {
 static Vector3 v3(double x, double y, double z) {
     return { (float)x, (float)y, (float)z };
 }
+static Vector3 v3(Vec3 r) { return v3(r.x, r.y, r.z); }
 
 // ---------------------------------------------------------------------
 // 3D arrow from the surface of the sphere at p (radius r) along v.
@@ -186,13 +187,13 @@ int main(int argc, char **argv) {
     for (int k = 0; k < nframes; ++k) {
         frames[k] = xyz_read(paths[k]);       // prints the reason on failure
         int ok = frames[k] != NULL;
-        if (ok && frames[k]->n != frames[0]->n) {
+        if (ok && frames[k]->n() != frames[0]->n()) {
             fprintf(stderr, "viewer: %s has %d particles, %s has %d\n",
-                    paths[k], frames[k]->n, paths[0], frames[0]->n);
+                    paths[k], frames[k]->n(), paths[0], frames[0]->n());
             ok = 0;
         }
-        for (int i = 0; ok && i < frames[k]->n; ++i)
-            if (frames[k]->type[i] != frames[0]->type[i]) {
+        for (int i = 0; ok && i < frames[k]->n(); ++i)
+            if (frames[k]->type(i) != frames[0]->type(i)) {
                 fprintf(stderr, "viewer: particle %d is '%s' in %s but '%s' in %s\n",
                         i, frames[k]->label(i), paths[k], frames[0]->label(i), paths[0]);
                 ok = 0;
@@ -206,8 +207,8 @@ int main(int argc, char **argv) {
     XYZFrame *f = frames[0];                  // frame currently shown
 
     // camera centered on the first frame's box
-    Vector3 c = v3(f->box.x / 2, f->box.y / 2, f->box.z / 2);
-    float Lmax = (float)fmax(f->box.x, fmax(f->box.y, f->box.z));
+    Vector3 c = v3(f->box().x / 2, f->box().y / 2, f->box().z / 2);
+    float Lmax = (float)fmax(f->box().x, fmax(f->box().y, f->box().z));
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);    // smoother sphere edges
     InitWindow(1000, 800, nframes == 1 ? GetFileName(paths[0])            // title: file name without folders
@@ -246,8 +247,8 @@ int main(int argc, char **argv) {
 
     // assign each particle a type (and thus a color) once, up front
     TypeTable types{};
-    std::vector<int> type_of(f->n);
-    for (int i = 0; i < f->n; ++i) type_of[i] = type_index(&types, f->label(i));
+    std::vector<int> type_of(f->n());
+    for (int i = 0; i < f->n(); ++i) type_of[i] = type_index(&types, f->label(i));
 
     while (!WindowShouldClose()) {
         // frame slider along the bottom, above the help lines
@@ -293,7 +294,7 @@ int main(int argc, char **argv) {
             }
         }
         f = frames[cur];
-        Vector3 L = v3(f->box.x, f->box.y, f->box.z);
+        Vector3 L = v3(f->box());
         Vector3 bc = { L.x / 2, L.y / 2, L.z / 2 };   // box center of this frame
 
         BeginDrawing();
@@ -301,20 +302,20 @@ int main(int argc, char **argv) {
         BeginMode3D(cam);
             DrawGrid(20, 1.0f);
             if (show_box) DrawCubeWires(bc, L.x, L.y, L.z, DARKGRAY);
-            for (int i = 0; i < f->n; ++i) {
-                Vector3 p = v3(f->x[i], f->y[i], f->z[i]);
+            for (int i = 0; i < f->n(); ++i) {
+                Vector3 p = v3(f->pos(i));
                 Color col = types.color[type_of[i]];
                 float radius = (float)element_radius(f->label(i));   // sigma_i / 2
                 DrawSphere(p, radius, col);
                 DrawSphereWires(p, radius, 8, 8, ColorBrightness(col, -0.4f));
                 if (show_v) {
-                    Vector3 v = v3(f->vx[i], f->vy[i], f->vz[i]);
+                    Vector3 v = v3(f->vel(i));
                     draw_arrow(p, radius, v, vscale, Color{ 200, 30, 30, 255 });
                 }
             }
         EndMode3D();
         DrawTextEx(font, f->comment.c_str(), Vector2{ 10, 10 }, FONT_SIZE, 1, DARKGRAY);
-        DrawTextEx(font, TextFormat("N = %d   box: %g x %g x %g (%s)", f->n, L.x, L.y, L.z, boundary_name(f->boundary)), Vector2{ 10, 38 }, FONT_SIZE, 1, DARKGRAY);
+        DrawTextEx(font, TextFormat("N = %d   box: %g x %g x %g (%s)", f->n(), L.x, L.y, L.z, boundary_name(f->boundary())), Vector2{ 10, 38 }, FONT_SIZE, 1, DARKGRAY);
 
         // legend: one colored dot + label per particle type
         for (int k = 0; k < types.n; ++k) {
