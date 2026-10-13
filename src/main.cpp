@@ -1,7 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
-#include <ctime>
 #include <format>
 #include <stdexcept>
 #include "xyzio.h"
@@ -12,28 +11,10 @@
 #include "checkers.h"
 #include "measure.h"
 
-/* this part will be moved later inside*/
-double EPS = 1.;
-double SIGMA = 1.;
-
-double LD_pot(double r, double e, double s){
-    return 4*e * (std::pow(s/r , 12) - std::pow(s/r , 6));
-}
-
 int main() {
-    try {
-        /* random number generator: fix the seed (e.g. 12345) for reproducible runs,
-       time(nullptr) gives a different sequence every second */
-    Rng rng;
-    rng_seed(&rng, (uint64_t)time(nullptr));
-    
+    try {    
     /* checking things for now*/
     printf("--------------------------------\n");
-    printf("Checking everything:\n");
-    printf("PI is %f, meaning math.h is called\n", M_PI);
-    printf("LD parameters are %f and %f, meaning globals are working\n", EPS, SIGMA);
-    printf("Check LD potential it should be 0: %f \n", LD_pot(1,EPS,SIGMA));
-    printf("Some random number between 0 and 1: %f \n", rng_uniform(&rng));
     printf("Read the test input now:\n");
     XYZFrame input = xyz_read(INPUT_DIR "test.xyz");
     printf("Number of particles: %d\n", input.n());

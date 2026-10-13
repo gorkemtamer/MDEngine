@@ -1,5 +1,5 @@
 == Test 1: write / read round-trip ==
-Wrote /home/gorkem-tamer/Desktop/MDEngine/output/test.xyz
+Wrote test.xyz
 Read back 4 rows, comment: "test frame, n=4"
 Lattice: 10 10 10, periodic boundaries
 lbl           x          y          z         vx         vy         vz
@@ -10,7 +10,7 @@ Ar     3.300000   6.600000   9.900000   0.300000  -0.300000   0.150000
 Round-trip OK (within 1e-6 tolerance).
 
 == Test 2: random geometry ==
-Wrote /home/gorkem-tamer/Desktop/MDEngine/output/random_test.xyz
+Wrote random_test.xyz
 Read back 10 rows, comment: "random geometry, n=10, scale=5"
 Lattice: 5 5 5, periodic boundaries
 lbl           x          y          z         vx         vy         vz

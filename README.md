@@ -2,18 +2,28 @@ Personal project for a simple MDEngine.
 
 --will be expanded--
 
-build instructions: (check makefile)
- - make            (builds everything into bin/)
- - bin/main
- - bin/viewer [file.xyz]
- - bin/xyzio_test
+build instructions: (CMake + CTest, C++20; the viewer needs raylib, check CMakeLists.txt)
+
+| Purpose | Command |
+|---|---|
+| set up once / after changing `CMakeLists.txt` | `cmake -S . -B build` |
+| compile | `cmake --build build -j` |
+| test | `ctest --test-dir build --output-on-failure` |
+| everything from scratch | `rm -rf build && cmake -S . -B build && cmake --build build -j` |
+
+run (executables are built into build/bin/):
+ - build/bin/main
+ - build/bin/viewer [file.xyz ...]
+ - build/bin/xyzio_test
 
 layout:
- - src/     programs (main.cpp, viewer.cpp)
- - lib/     shared code (xyzio, rng, checkers, elements, paths)
- - bin/     executables, created by make
- - input/   input .xyz files
- - output/  generated files
+ - src/        programs (main.cpp, viewer.cpp)
+ - lib/        shared code (xyzio, rng, checkers, elements, paths)
+ - tests/      test programs (xyzio_test.cpp) and compare_output.cmake (runs a program, compares its output with reference/)
+ - reference/  expected outputs used by the tests (main_seed42.txt, xyzio_test.txt)
+ - build/      created by CMake: build files, executables in build/bin/
+ - input/      input .xyz files
+ - output/     generated files
 
 units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
@@ -51,3 +61,6 @@ no further compute is needed)
 
 - Further overhaul of write and read functions w.r.t. new XYZFrame class
 - Proper conversion to cpp now works exactly same as the plain c version
+
+- CMake implementation for ctest (finished)
+main_reference and xyzio_test are only once at the moment (for consistency)

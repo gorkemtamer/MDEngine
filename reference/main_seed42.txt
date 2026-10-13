@@ -1,8 +1,4 @@
 --------------------------------
-Checking everything:
-PI is 3.141593, meaning math.h is called
-LD parameters are 1.000000 and 1.000000, meaning globals are working
-Check LD potential it should be 0: 0.000000 
 Read the test input now:
 Number of particles: 4
 Read the comment: test frame, n=4
