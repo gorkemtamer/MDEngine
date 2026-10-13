@@ -1,9 +1,9 @@
 // Test:   make xyzio_test && bin/xyzio_test   (writes into output/)
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
 #include "xyzio.h"
 #include "checkers.h"
 #include "paths.h"

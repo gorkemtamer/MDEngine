@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <time.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
 #include "xyzio.h"
 #include "rng.h"
 #include "paths.h"
@@ -66,7 +66,7 @@ int main(){
 
     double ekin = geom->KineticEnergy();
     double epot = PotentialEnergy(geom);
-    if (isnan(epot)) { xyz_free(geom); return 1; }
+    if (std::isnan(epot)) { xyz_free(geom); return 1; }
     printf("%5s %8s %12s %12s %12s\n", "step", "t", "Ekin", "Epot", "Etot");
     printf("%5d %8.3f %12.6f %12.6f %12.6f\n", 0, 0.0, ekin, epot, ekin + epot);
 

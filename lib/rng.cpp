@@ -5,7 +5,7 @@
 // Seeding uses splitmix64, as recommended by the authors, so that even
 // simple seeds (0, 1, 2, ...) give well-mixed, nonzero starting states.
 
-#include <math.h>
+#include <cmath>
 #include "rng.h"
 
 static inline uint64_t rotl(uint64_t x, int k) {

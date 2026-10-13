@@ -27,10 +27,10 @@
     Frames are numbered from 0 (= first file, e.g. initialconfig.xyz).
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
 #include <vector>
 #include "raylib.h"
 #include "xyzio.h"

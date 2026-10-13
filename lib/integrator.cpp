@@ -2,9 +2,8 @@
 //
 // Lennard-Jones forces (naive all-pairs) and the velocity-Verlet integrator.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include <cstdio>
+#include <cmath>
 #include "integrator.h"
 #include "elements.h"
 #include "params.h"

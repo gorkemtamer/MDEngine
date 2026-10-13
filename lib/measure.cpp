@@ -2,7 +2,7 @@
 //
 // Observables of a single frame.
 
-#include <math.h>
+#include <cmath>
 #include "measure.h"
 #include "integrator.h"
 #include "elements.h"
