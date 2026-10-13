@@ -61,8 +61,7 @@ int main(void) {
 
         printf("\n== Test 2: random geometry ==\n");
         const char *rpath = OUTPUT_DIR "random_test.xyz";
-        Rng rng;
-        rng_seed(&rng, 42);      // fixed seed: same geometry every run
+        Rng rng(42); // fixed seed: same geometry every run
 
         XYZFrame gen = RandomFrame(10, 5.0, Boundary::Periodic, DEFAULT_T, rng);
         xyz_write(rpath, gen);

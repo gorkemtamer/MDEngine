@@ -39,9 +39,8 @@ int main() {
     const double dt          = 0.005;  /* time step in tau */
     const int    n_steps     = 1000;
 
-    Rng md_rng;
-    rng_seed(&md_rng, 42);             /* fixed seed: same trajectory every run */
-
+    Rng md_rng(42);  /* fixed seed: same trajectory every run */
+    
     XYZFrame geom = RandomFrame(n_particles, box, Boundary::Periodic, DEFAULT_T, md_rng);
     xyz_write(OUTPUT_DIR "initialconfig.xyz", geom);
     xyz_write(INPUT_DIR "initialconfig.xyz", geom);    

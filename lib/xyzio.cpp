@@ -127,7 +127,7 @@ XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
         do {
             if(++tries > max_tries) 
                 throw std::runtime_error(std::format("RandomFrame: could not place particle {} after {} tries, box too small for n={} (increase scale)", i, max_tries, n));
-            Vec3 r{ scale*rng_uniform(&rng), scale*rng_uniform(&rng), scale*rng_uniform(&rng)};
+            Vec3 r{ scale*rng.uniform(), scale*rng.uniform(), scale*rng.uniform()};
             f.set_pos(i, r);
         } while (TooCloseToEarlier(f,i));
     }
@@ -136,9 +136,9 @@ XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
     for (int i = 0; i < n; ++i) {
         double m = f.mass(i);
         Vec3 v{
-            rng_MaxwellBoltzmann(&rng, T, m),
-            rng_MaxwellBoltzmann(&rng, T, m),
-            rng_MaxwellBoltzmann(&rng, T, m)};
+            rng.MaxwellBoltzmann(T, m),
+            rng.MaxwellBoltzmann(T, m),
+            rng.MaxwellBoltzmann(T, m)};
         f.set_vel(i,v);
     }
 
