@@ -57,7 +57,7 @@ add_reference_test(main_reference main main_seed42.txt)
 add_reference_test(xyzio_roundtrip xyzio_test xyzio_test.txt)
 
 add_physics_test(rng_test)
-#add_physics_test(force_test)
+add_physics_test(force_test)
 #add_physics_test(newton_test)
 #add_physics_test(energy_test)
 #add_physics_test(reversibility_test)
