@@ -57,13 +57,13 @@ double rng_normal(Rng *r) {
     const double two_pi = 6.283185307179586;
     double u1 = 1.0 - rng_uniform(r);     // (0, 1]: avoids log(0)
     double u2 = rng_uniform(r);
-    double R = sqrt(-2.0 * log(u1));
+    double R = std::sqrt(-2.0 * std::log(u1));
 
-    r->spare = R * sin(two_pi * u2);
+    r->spare = R * std::sin(two_pi * u2);
     r->has_spare = 1;
-    return R * cos(two_pi * u2);
+    return R * std::cos(two_pi * u2);
 }
 
 double rng_MaxwellBoltzmann(Rng *r, double kT, double mass) {
-    return sqrt(kT / mass) * rng_normal(r);
+    return std::sqrt(kT / mass) * rng_normal(r);
 }

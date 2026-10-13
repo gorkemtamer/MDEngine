@@ -46,7 +46,7 @@
 // CPK/Jmol scheme), any other label gets the next color from the palette
 // in order of first appearance.
 // ---------------------------------------------------------------------
-typedef struct { const char *label; Color color; } LabelColor;
+struct LabelColor{ const char *label; Color color; };
 
 static const LabelColor KNOWN[] = {
     { "H",  { 230, 230, 230, 255 } }, { "C",  {  80,  80,  80, 255 } },
@@ -64,11 +64,11 @@ static const Color PALETTE[] = {
 
 #define MAX_TYPES 32
 
-typedef struct {
+struct TypeTable{
     int  n;
     char label[MAX_TYPES][LABEL_LEN];
     Color color[MAX_TYPES];
-} TypeTable;
+};
 
 // Returns the index of `label` in the table, adding it if it is new.
 static int type_index(TypeTable *t, const char *label) {
@@ -115,10 +115,10 @@ static void draw_arrow(Vector3 p, float r, Vector3 v, float scale, Color col) {
 
 // Orbit camera: the camera sits on a sphere of radius `dist` around `target`,
 // at angles yaw (around the y axis) and pitch (up/down).
-typedef struct {
+struct Orbit{
     Vector3 target;
     float dist, yaw, pitch;
-} Orbit;
+};
 
 static void orbit_apply(const Orbit *o, Camera3D *cam) {
     cam->target = o->target;
@@ -174,19 +174,19 @@ static void orbit_update(Orbit *o, const Camera3D *cam) {
 int main(int argc, char **argv) {
     // split the arguments: .ttf/.otf -> font, everything else -> trajectory frames
     const char *font_path = DEFAULT_FONT;
-    const char **paths = static_cast<const char**>(malloc((argc > 1 ? argc : 2) * sizeof *paths));
-    int nframes = 0;
+    std::vector<const char*> paths;
     for (int a = 1; a < argc; ++a) {
         if (IsFileExtension(argv[a], ".ttf;.otf")) font_path = argv[a];
-        else paths[nframes++] = argv[a];
+        else paths.push_back(argv[a]);
     }
-    if (nframes == 0) paths[nframes++] = INPUT_DIR "test.xyz";
-
+    if (paths.empty()) paths.push_back(INPUT_DIR "test.xyz");
+    const int nframes = static_cast<int>(paths.size());
+    
     // load every frame up front; all frames must describe the same particles
-    XYZFrame **frames = static_cast<XYZFrame**>(calloc(nframes, sizeof *frames));
+    std::vector<XYZFrame*> frames(nframes, nullptr);
     for (int k = 0; k < nframes; ++k) {
         frames[k] = xyz_read(paths[k]);       // prints the reason on failure
-        int ok = frames[k] != NULL;
+        int ok = frames[k] != nullptr;
         if (ok && frames[k]->n() != frames[0]->n()) {
             fprintf(stderr, "viewer: %s has %d particles, %s has %d\n",
                     paths[k], frames[k]->n(), paths[0], frames[0]->n());
@@ -200,7 +200,6 @@ int main(int argc, char **argv) {
             }
         if (!ok) {
             for (int j = 0; j <= k; ++j) xyz_free(frames[j]);
-            free(frames); free(paths);
             return 1;
         }
     }
@@ -220,7 +219,7 @@ int main(int argc, char **argv) {
     // Falls back to raylib's built-in pixel font if the file can't be loaded.
     Font font = GetFontDefault();
     if (FileExists(font_path)) {
-        Font tmp = LoadFontEx(font_path, 2 * FONT_SIZE, NULL, 0);
+        Font tmp = LoadFontEx(font_path, 2 * FONT_SIZE, nullptr, 0);
         if (IsFontValid(tmp)) {
             font = tmp;
             SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
@@ -359,6 +358,5 @@ int main(int argc, char **argv) {
     UnloadFont(font);     // no-op for the default font
     CloseWindow();
     for (int k = 0; k < nframes; ++k) xyz_free(frames[k]);
-    free(frames); free(paths);
     return 0;
 }

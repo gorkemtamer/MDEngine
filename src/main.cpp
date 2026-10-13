@@ -14,14 +14,14 @@ double EPS = 1.;
 double SIGMA = 1.;
 
 double LD_pot(double r, double e, double s){
-    return 4*e * (pow(s/r , 12) - pow(s/r , 6));
+    return 4*e * (std::pow(s/r , 12) - std::pow(s/r , 6));
 }
 
 int main(){
     /* random number generator: fix the seed (e.g. 12345) for reproducible runs,
-       time(NULL) gives a different sequence every second */
+       time(nullptr) gives a different sequence every second */
     Rng rng;
-    rng_seed(&rng, (uint64_t)time(NULL));
+    rng_seed(&rng, (uint64_t)time(nullptr));
     
     /* checking things for now*/
     printf("--------------------------------\n");

@@ -1,10 +1,8 @@
 #pragma once
 #include <cmath>
 
-
 /*Helper functions for vector operations in general
 to avoid repeated function in separate sources*/
-
 
 /*vector definition*/
 struct Vec3{    
@@ -34,8 +32,8 @@ inline Vec3 cross(const Vec3& a, const Vec3& b) {
 
 /*distance to nearest periodic image*/
 inline Vec3 min_image(Vec3 d, const Vec3& L){
-    d.x -= L.x * round(d.x / L.x);
-    d.y -= L.y * round(d.y / L.y);
-    d.z -= L.z * round(d.z / L.z);
+    d.x -= L.x * std::round(d.x / L.x);
+    d.y -= L.y * std::round(d.y / L.y);
+    d.z -= L.z * std::round(d.z / L.z);
     return d;
 }

@@ -17,7 +17,7 @@
 
 // Fraction of sigma_ij below which a pair counts as unphysical.
 // At r = 0.8 sigma the LJ energy is already ~ +43 epsilon.
-#define MIN_DIST_FACTOR 0.8
+inline constexpr double MIN_DIST_FACTOR = 0.8;
 
 // One element, already converted to reduced units.
 struct Element {

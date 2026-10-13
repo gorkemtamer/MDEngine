@@ -9,7 +9,7 @@ build instructions: (check makefile)
  - bin/xyzio_test
 
 layout:
- - src/     programs (main.c, viewer.c)
+ - src/     programs (main.cpp, viewer.cpp)
  - lib/     shared code (xyzio, rng, checkers, elements, paths)
  - bin/     executables, created by make
  - input/   input .xyz files

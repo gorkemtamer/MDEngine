@@ -5,7 +5,7 @@
 #include "boundary.h"
 #include "elements.h"
 
-#define LABEL_LEN 8 //number of columns in file + 1
+inline constexpr int LABEL_LEN = 8; //number of columns in file + 1
 
 //--------------------------------------------------
 /*

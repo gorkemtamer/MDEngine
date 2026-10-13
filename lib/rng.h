@@ -11,11 +11,11 @@
 // The state lives in a struct, so you can have independent streams
 // (e.g. one per thread) and the same seed always gives the same sequence.
 // ---------------------------------------------------------------------
-typedef struct {
+struct Rng{
     uint64_t s[4];
     int    has_spare;   // rng_normal makes normals in pairs; the second one
     double spare;       // is kept here for the next call
-} Rng;
+};
 
 // Initialize the state from a single 64-bit seed (any value, 0 included).
 void rng_seed(Rng *r, uint64_t seed);

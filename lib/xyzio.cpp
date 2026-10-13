@@ -54,13 +54,13 @@ int xyz_write(const char *path, const XYZFrame *f) {
 // distribution at DEFAULT_T (params.h), then the center-of-mass velocity
 // is subtracted so the system does not drift as a whole.
 // CheckMinDistance is also implemented to avoid overlaps.
-// Returns the frame (caller frees it with xyz_free), or NULL on failure.
+// Returns the frame (caller frees it with xyz_free), or nullptr on failure.
 //
 // ---------------------------------------------------------------------
 XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
     if (n <= 0 || scale <= 0) {
         fprintf(stderr, "xyz_random: need n > 0 and scale > 0 (got n=%d, scale=%g)\n", n, scale);
-        return NULL;
+        return nullptr;
     }
 
     // 1 1 1 box, scaled, PBC
@@ -82,7 +82,7 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
                 fprintf(stderr, "xyz_random: could not place particle %d after %d tries,"
                 "box too small for n=%d (increase scale)\n", i, max_tries, n);                
                 xyz_free(f);
-                return NULL;
+                return nullptr;
             }
             Vec3 r{ scale*rng_uniform(rng), scale*rng_uniform(rng), scale*rng_uniform(rng)};
             f->set_pos(i, r);
@@ -103,17 +103,17 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
     const Vec3 vcm = f->TotalMomentum() / f->TotalMass();
     for (int i = 0; i < n; ++i) f->set_vel(i,f->vel(i) - vcm);
 
-    if (xyz_write(path, f) != 0) { xyz_free(f); return NULL; }
+    if (xyz_write(path, f) != 0) { xyz_free(f); return nullptr; }
     return f;
 }
 
 // ---------------------------------------------------------------------
 // Read an extended XYZ file into a freshly allocated XYZFrame.
-// Returns NULL on failure (bad file, malformed header, etc).
+// Returns nullptr on failure (bad file, malformed header, etc).
 // ---------------------------------------------------------------------
 XYZFrame* xyz_read(const char *path) {
     FILE *fp = fopen(path, "r");
-    if (!fp) { perror("xyz_read: fopen"); return NULL; }
+    if (!fp) { perror("xyz_read: fopen"); return nullptr; }
 
     char line[512];
     int n;
@@ -122,14 +122,14 @@ XYZFrame* xyz_read(const char *path) {
     if (!fgets(line, sizeof(line), fp) || sscanf(line, "%d", &n) != 1) {
         fprintf(stderr, "xyz_read: failed to parse particle count\n");
         fclose(fp);
-        return NULL;
+        return nullptr;
     }
 
     // line 2: comment (keep the whole line, minus trailing newline)
     if (!fgets(line, sizeof(line), fp)) {
         fprintf(stderr, "xyz_read: failed to read comment line\n");
         fclose(fp);
-        return NULL;
+        return nullptr;
     }
     line[strcspn(line, "\n")] = '\0';
     std::string comment = line;
@@ -146,7 +146,7 @@ XYZFrame* xyz_read(const char *path) {
         fprintf(stderr, "xyz_read: line 3 must be 'Lattice Lx Ly Lz periodic P' "
                         "with positive lengths and P = 0 (open) or 1 (periodic)\n");
         fclose(fp);
-        return NULL;
+        return nullptr;
     }
 
     XYZFrame *f = new XYZFrame(n, box, bc); //box and flag already checked: cannot throw
@@ -157,7 +157,7 @@ XYZFrame* xyz_read(const char *path) {
         if (!fgets(line, sizeof(line), fp)) {
             fprintf(stderr, "xyz_read: unexpected EOF at row %d\n", i);
             xyz_free(f); fclose(fp);
-            return NULL;
+            return nullptr;
         }
         char lbl[LABEL_LEN];
         Vec3 r, v;
@@ -166,14 +166,14 @@ XYZFrame* xyz_read(const char *path) {
         if (ok != 7) {
             fprintf(stderr, "xyz_read: malformed row %d (parsed %d fields)\n", i, ok);
             xyz_free(f); fclose(fp);
-            return NULL;
+            return nullptr;
         }
         int k = element_index(lbl);
         if (k<0)
         {
             fprintf(stderr, "xyz_read: unknown element '%s' in row %d, add it to elements.cpp\n",lbl,i);
             xyz_free(f); fclose(fp);
-            return NULL;
+            return nullptr;
         }        
         f->set_element(i,k);
         f->set_pos(i,r);
@@ -186,7 +186,7 @@ XYZFrame* xyz_read(const char *path) {
     if (bad != 0) {
         if (bad > 0) fprintf(stderr, "xyz_read: %d particle pair(s) too close in %s\n", bad, path);
         xyz_free(f);
-        return NULL;
+        return nullptr;
     }
     return f;
 }
@@ -243,7 +243,7 @@ int main(void) {
     const double tol = 1e-6;
     int mismatch = 0;
     for (int i = 0; i < n; ++i) {
-        if (fabs(out->pos(i).x - in->pos(i).x) > tol || fabs(out->vel(i).z - in->vel(i).z) > tol) mismatch = 1;
+        if (std::fabs(out->pos(i).x - in->pos(i).x) > tol || std::fabs(out->vel(i).z - in->vel(i).z) > tol) mismatch = 1;
     }
     printf(mismatch ? "MISMATCH after round-trip!\n" : "Round-trip OK (within 1e-6 tolerance).\n");
 
