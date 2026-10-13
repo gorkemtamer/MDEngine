@@ -1,5 +1,5 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -O2 -Ilib
+CXX = g++
+CXXFLAGS = -std=c++20 -Wall -Wextra -O2 -Ilib
 
 # Layout:
 #   src/     programs (files with main)
@@ -14,19 +14,19 @@ DIRS = -DINPUT_DIR='"$(CURDIR)/input/"' -DOUTPUT_DIR='"$(CURDIR)/output/"'
 
 # every .c/.h in lib/ is picked up automatically
 # (makefile is a prerequisite too: changing flags or paths here rebuilds everything)
-LIB_SRC = $(wildcard lib/*.c)
+LIB_SRC = $(wildcard lib/*.cpp)
 LIB_H   = $(wildcard lib/*.h)
 
 all: bin/main bin/viewer bin/xyzio_test
 
-bin/main: src/main.c $(LIB_SRC) $(LIB_H) makefile | bin output
-	$(CC) $(CFLAGS) $(DIRS) src/main.c $(LIB_SRC) -o $@ -lm
+bin/main: src/main.cpp $(LIB_SRC) $(LIB_H) makefile | bin output
+	$(CXX) $(CXXFLAGS) $(DIRS) src/main.cpp $(LIB_SRC) -o $@ -lm
 
-bin/viewer: src/viewer.c $(LIB_SRC) $(LIB_H) makefile | bin output
-	$(CC) $(CFLAGS) $(DIRS) src/viewer.c $(LIB_SRC) -o $@ -lraylib -lm
+bin/viewer: src/viewer.cpp $(LIB_SRC) $(LIB_H) makefile | bin output
+	$(CXX) $(CXXFLAGS) $(DIRS) src/viewer.cpp $(LIB_SRC) -o $@ -lraylib -lm
 
 bin/xyzio_test: $(LIB_SRC) $(LIB_H) makefile | bin output
-	$(CC) $(CFLAGS) $(DIRS) -DXYZIO_TEST $(LIB_SRC) -o $@ -lm
+	$(CXX) $(CXXFLAGS) $(DIRS) -DXYZIO_TEST $(LIB_SRC) -o $@ -lm
 
 bin output:
 	mkdir -p $@

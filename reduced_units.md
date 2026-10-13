@@ -33,9 +33,9 @@ belong to the same fit:
 
 | Base unit | Symbol | Value | Defined in code |
 |---|---|---|---|
-| length | σ_Ar | 3.418 Å | `SIGMA_REF` in `lib/elements.c` |
-| energy | ε_Ar | ε/k_B = 124.0 K | `EPS_REF` in `lib/elements.c` |
-| mass | m_Ar | 39.948 u | `MASS_REF` in `lib/elements.c` |
+| length | σ_Ar | 3.418 Å | `SIGMA_REF` in `lib/elements.cpp` |
+| energy | ε_Ar | ε/k_B = 124.0 K | `EPS_REF` in `lib/elements.cpp` |
+| mass | m_Ar | 39.948 u | `MASS_REF` in `lib/elements.cpp` |
 | Boltzmann constant | k_B | 1 | implicit |
 
 If you change the reference (e.g. to σ = 3.405 Å, ε/k_B = 119.8 K, another
@@ -74,9 +74,12 @@ a cut-off potential shifts them slightly.
 
 ## Elements
 
-σ, ε and mass are stored in `lib/elements.c` in Å, K and u.
-`element_radius()` returns σ_i / (2 σ_Ar), `element_epsilon()` returns
-ε_i / ε_Ar and `element_mass()` returns m_i / m_Ar.
+σ, ε and mass are written in `lib/elements.cpp` in Å, K and u, and
+converted once, at compile time, to reduced units. `element(element_index(label))`
+returns an `Element` with `.sigma` = σ_i / σ_Ar, `.eps` = ε_i / ε_Ar and
+`.mass` = m_i / m_Ar. For particle i of a frame, `f->element(i)` gives the
+same `Element` and `f->mass(i)` its mass. The particle radius used by the
+minimum-distance check and the viewer is σ_i / 2.
 
 | Element | σ (Å) | σ\* | radius\* = σ\*/2 | mass (u) | m\* | ε/k_B (K) | ε\* |
 |---|---|---|---|---|---|---|---|
@@ -106,29 +109,30 @@ For a pair i–j of different elements, the Lorentz–Berthelot rules apply:
     σ_ij = (σ_i + σ_j) / 2        (Lorentz)
     ε_ij = √(ε_i ε_j)             (Berthelot)
 
-Because `element_radius()` returns σ_i / 2, the sum of two radii is σ_ij.
+Because a particle's radius is σ_i / 2, the sum of two radii is σ_ij.
 
 ## How quantities are stored in the code
 
 | Where | Quantity | Unit |
 |---|---|---|
-| `XYZFrame.x, y, z` and `.xyz` columns 2–4 | positions | σ |
-| `XYZFrame.vx, vy, vz` and `.xyz` columns 5–7 | velocities | σ/τ |
-| `XYZFrame.lattice` and `Lattice` line | box lengths | σ |
+| `XYZFrame::pos(i)` and `.xyz` columns 2–4 | positions | σ |
+| `XYZFrame::vel(i)` and `.xyz` columns 5–7 | velocities | σ/τ |
+| `XYZFrame::box()` and `Lattice` line | box lengths | σ |
 | `xyz_random(..., scale, ...)` | box edge length | σ |
-| `element_radius()` | σ_i / 2 | σ |
-| `element_mass()` | m_i | m_Ar |
+| particle radius `0.5 * f->element(i).sigma` | σ_i / 2 | σ |
+| `XYZFrame::mass(i)` | m_i | m_Ar |
 | `rng_MaxwellBoltzmann(r, kT, mass)` | kT, mass → velocity component | ε, m_Ar → σ/τ |
 | `MIN_DIST_FACTOR` (= 0.8) | minimum pair distance / σ_ij | dimensionless |
 | viewer sphere radius | σ_i / 2 | σ |
-| `EPS`, `SIGMA` in `src/main.c` | LJ parameters | ε, σ (both 1) |
+| `EPS`, `SIGMA` in `src/main.cpp` | LJ parameters | ε, σ (both 1) |
 | `DEFAULT_T` in `lib/params.h` (= 1.0) | temperature used by `xyz_random` | ε/k_B (1.0 = 124 K) |
 | `LJ_CUTOFF` in `lib/params.h` (= 2.5) | LJ cutoff radius / σ_ij | dimensionless |
-| `XYZFrame.fx, fy, fz` | forces | ε/σ |
-| `KineticEnergy()`, `PotentialEnergy()` (`lib/measure.h`), `XYZFrame.epot` | energies | ε |
+| `XYZFrame::force(i)` | forces | ε/σ |
+| `XYZFrame::KineticEnergy()`, `XYZFrame::PotentialEnergy()`, `PotentialEnergy(f)` (`lib/measure.h`) | energies | ε |
+| `XYZFrame::TotalMomentum()` | total momentum | m_Ar σ/τ |
 | `VelocityVerletStep(f, dt)` | time step | τ (typical 0.005 ≈ 10.6 fs) |
-| `element_epsilon()` | ε_i | ε_Ar |
+| `Element.sigma`, `.eps`, `.mass` (`element(k)`) | σ_i, ε_i, m_i | σ_Ar, ε_Ar, m_Ar |
 
 Example: a Maxwell–Boltzmann velocity for argon at 100 K is
-`rng_MaxwellBoltzmann(&rng, 100.0 / 124.0, element_mass("Ar"))`,
+`rng_MaxwellBoltzmann(&rng, 100.0 / 124.0, element(element_index("Ar")).mass)`,
 i.e. kT\* = 0.806 and m\* = 1.

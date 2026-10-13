@@ -9,13 +9,13 @@ build instructions: (check makefile)
  - bin/xyzio_test
 
 layout:
- - src/     programs (main.c, viewer.c)
+ - src/     programs (main.cpp, viewer.cpp)
  - lib/     shared code (xyzio, rng, checkers, elements, paths)
  - bin/     executables, created by make
  - input/   input .xyz files
  - output/  generated files
 
-units: everything is in reduced (Lennard-Jones) units, see reduced_units.md
+units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
 
 Starting point: Lennard-Jones potential and hard spheres.
@@ -23,9 +23,9 @@ Starting point: Lennard-Jones potential and hard spheres.
 Time integrator: Velocity-verlet
 
 -----------------------------------------------------
-7.10.2026:
+7.10.2026: (version 0.0.1 in plain C)
 
-- First version of the viewer for a single snapshot (mostly done with the help of cloud)
+- First version of the viewer for a single snapshot (mostly done with the help of claude)
 - Random number generator for uniform (xoshiro256*), normal (Box-Muller method) and Maxwell-Boltzmann distirbutions for a randomized initial configuration
 - Simple implementation of atomic radii to avoid overlapping hard spheres by CheckMinDistance and a 
 reduced atomic radii list (normalized to Ar radius)
@@ -37,4 +37,17 @@ hardcoded to a LJ potential (epot is computed directly from dU/dr analytically)
 -----------------------------------------------------
 12.10.2026:
 
--
+- Switch to cpp in order to avoid overhead in `struct`.
+- Vec3 helper functions to collect operations to one place
+- for PBC: nearest image distance
+- current implementation mostly implemented assuming PBC, OBC will come later
+- new element data structure (necessary parameters computed once during compilation and
+no further compute is needed)
+(index search instead of string search)
+- Complete overhaul of the XYZFrame into a proper class (check frame.h for starters)
+- another element data structure change required due to the XYZFrame overhaul 
+-----------------------------------------------------
+13.10.2026: (version 0.0.2 now in cpp)
+
+- Further overhaul of write and read functions w.r.t. new XYZFrame class
+- Proper conversion to cpp now works exactly same as the plain c version
