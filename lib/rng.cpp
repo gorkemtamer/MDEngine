@@ -6,6 +6,7 @@
 // simple seeds (0, 1, 2, ...) give well-mixed, nonzero starting states.
 
 #include <cmath>
+#include <stdexcept>
 #include "rng.h"
 
 namespace {
@@ -24,6 +25,12 @@ std::uint64_t splitmix64(std::uint64_t& x){
 }
 
 } //namespace
+
+Rng::Rng(const std::array<std::uint64_t, 4>& state) {
+    if (state[0] == 0 && state[1] == 0 && state[2] == 0 && state[3] == 0)
+        throw std::invalid_argument("Rng: the all-zero state is not allowed");
+    for (int i = 0; i < 4; ++i) s_[i] = state[i];
+}
 
 void Rng::seed(std::uint64_t s) {
     for (int i = 0; i < 4; ++i) s_[i] = splitmix64(s);

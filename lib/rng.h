@@ -2,6 +2,7 @@
 #define RNG_H
 
 #include <cstdint>
+#include <array>
 
 // ---------------------------------------------------------------------
 // xoshiro256** pseudo-random number generator (Blackman & Vigna, 2018).
@@ -17,6 +18,11 @@ class Rng{
 public:
     //Seeded from a single 64-bit value (any value, 0 included)
     explicit Rng(std::uint64_t seed) {this->seed(seed);}
+
+    // Start from an explicit internal state instead of a seed. Used to
+    // reproduce published reference sequences (tests). Throws
+    // std::invalid_argument for the all-zero state, which never changes.
+    explicit Rng(const std::array<std::uint64_t, 4>& state);
 
     //A copy would continue the same sequence: 
     //Two "independent" streams that are in fact identical.

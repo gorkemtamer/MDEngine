@@ -46,5 +46,18 @@ function(add_reference_test name target reference)
                 -P ${CMAKE_SOURCE_DIR}/tests/compare_output.cmake)
 endfunction()
 
+function(add_physics_test name)
+    add_executable(${name} tests/${name}.cpp)
+    target_link_libraries(${name} PRIVATE mdengine)
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+
 add_reference_test(main_reference main main_seed42.txt)
 add_reference_test(xyzio_roundtrip xyzio_test xyzio_test.txt)
+
+add_physics_test(rng_test)
+#add_physics_test(force_test)
+#add_physics_test(newton_test)
+#add_physics_test(energy_test)
+#add_physics_test(reversibility_test)

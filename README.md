@@ -32,6 +32,7 @@ Tests:
  Sanity check to see if any change effects the physics
  In the future will be replaced with more complex examples
  - xyzio_test: checks if xyz_read and xyz_write correctly functions, this will be kept maybe expanded later
+ - rng_test: checks the xoshiro256** with a reference, and checks the quality of uniform, normal and Maxwell-Boltzmann distributions by assessing the means and variances. Final check for reproducability
  
 
 units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
