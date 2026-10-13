@@ -7,8 +7,8 @@
 #include "integrator.h"
 #include "elements.h"
 
-double PotentialEnergy(XYZFrame *f) {
+double PotentialEnergy(XYZFrame& f) {
     // one LJ implementation for forces and energy: reuse ComputeForces
-    if (!f->forces_valid() && ComputeForces(f) != 0) return NAN;
-    return f->PotentialEnergy();
+    if (!f.forces_valid()) ComputeForces(f) ;
+    return f.PotentialEnergy();
 }

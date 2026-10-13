@@ -5,8 +5,6 @@
 #include "boundary.h"
 #include "elements.h"
 
-inline constexpr int LABEL_LEN = 8; //number of columns in file + 1
-
 //--------------------------------------------------
 /*
 One snapshot of the system. All per-particle arrays

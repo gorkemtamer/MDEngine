@@ -31,6 +31,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <exception>
 #include <vector>
 #include "raylib.h"
 #include "xyzio.h"
@@ -66,7 +67,7 @@ static const Color PALETTE[] = {
 
 struct TypeTable{
     int  n;
-    char label[MAX_TYPES][LABEL_LEN];
+    const char *label[MAX_TYPES];
     Color color[MAX_TYPES];
 };
 
@@ -77,7 +78,7 @@ static int type_index(TypeTable *t, const char *label) {
     if (t->n == MAX_TYPES) return MAX_TYPES - 1;   // too many types: share the last color
 
     int k = t->n++;
-    snprintf(t->label[k], LABEL_LEN, "%s", label);
+    t->label[k] = label;
     static int next = 0;
     t->color[k] = PALETTE[next++ % (sizeof(PALETTE) / sizeof(PALETTE[0]))];
     for (size_t j = 0; j < sizeof(KNOWN) / sizeof(KNOWN[0]); ++j)
@@ -182,28 +183,33 @@ int main(int argc, char **argv) {
     if (paths.empty()) paths.push_back(INPUT_DIR "test.xyz");
     const int nframes = static_cast<int>(paths.size());
     
-    // load every frame up front; all frames must describe the same particles
-    std::vector<XYZFrame*> frames(nframes, nullptr);
-    for (int k = 0; k < nframes; ++k) {
-        frames[k] = xyz_read(paths[k]);       // prints the reason on failure
-        int ok = frames[k] != nullptr;
-        if (ok && frames[k]->n() != frames[0]->n()) {
+    // load every frame up front (xyz_read throws with the reason on failure)
+    std::vector<XYZFrame> frames;
+    frames.reserve(nframes);
+    try {
+        for (const char *p : paths) frames.push_back(xyz_read(p));
+    } catch (const std::exception& e) {
+        fprintf(stderr, "viewer: %s\n", e.what());
+        return 1;
+    }
+
+    // all frames must describe the same particles
+    for (int k = 1; k < nframes; ++k) {
+        if (frames[k].n() != frames[0].n()) {
             fprintf(stderr, "viewer: %s has %d particles, %s has %d\n",
-                    paths[k], frames[k]->n(), paths[0], frames[0]->n());
-            ok = 0;
-        }
-        for (int i = 0; ok && i < frames[k]->n(); ++i)
-            if (frames[k]->type(i) != frames[0]->type(i)) {
-                fprintf(stderr, "viewer: particle %d is '%s' in %s but '%s' in %s\n",
-                        i, frames[k]->label(i), paths[k], frames[0]->label(i), paths[0]);
-                ok = 0;
-            }
-        if (!ok) {
-            for (int j = 0; j <= k; ++j) xyz_free(frames[j]);
+                    paths[k], frames[k].n(), paths[0], frames[0].n());
             return 1;
         }
+        for (int i = 0; i < frames[k].n(); ++i)
+            if (frames[k].type(i) != frames[0].type(i)) {
+                fprintf(stderr, "viewer: particle %d is '%s' in %s but '%s' in %s\n",
+                        i, frames[k].label(i), paths[k], frames[0].label(i), paths[0]);
+                return 1;
+            }
     }
-    XYZFrame *f = frames[0];                  // frame currently shown
+
+    // frame currently shown; frames is not changed after loading, so the pointer stays valid
+    const XYZFrame *f = &frames[0];
 
     // camera centered on the first frame's box
     Vector3 c = v3(f->box().x / 2, f->box().y / 2, f->box().z / 2);
@@ -292,7 +298,7 @@ int main(int argc, char **argv) {
                 while (acc >= 1.0f / fps) { acc -= 1.0f / fps; cur = (cur + 1) % nframes; }
             }
         }
-        f = frames[cur];
+        f = &frames[cur];
         Vector3 L = v3(f->box());
         Vector3 bc = { L.x / 2, L.y / 2, L.z / 2 };   // box center of this frame
 
@@ -357,6 +363,5 @@ int main(int argc, char **argv) {
 
     UnloadFont(font);     // no-op for the default font
     CloseWindow();
-    for (int k = 0; k < nframes; ++k) xyz_free(frames[k]);
     return 0;
 }

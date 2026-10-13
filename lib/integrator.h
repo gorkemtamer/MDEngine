@@ -13,23 +13,25 @@
 // Periodic frames use the minimum-image convention.
 // ---------------------------------------------------------------------
 
-// Computes the force on every particle into f->fx, f->fy, f->fz and the
-// total potential energy into f->epot, then sets f->forces_valid = 1.
+// Computes all forces and the total potential energy
+// stores them in the frame (add_force, set_potential_energy)
 // Naive O(n^2) loop over pairs j > i; each pair force is added to i and
 // subtracted from j (Newton's third law), so every pair is computed once.
-// Returns 0 on success, -1 on invalid input (printed to stderr).
-int ComputeForces(XYZFrame *f);
+// throws std::runtime_error when the box is narrower than
+// 2xcutoff or two particles coincide
+void ComputeForces(XYZFrame& f); 
 
 // Advances the frame by one velocity-Verlet step of length dt:
 //     v(t + dt/2) = v(t)        + dt/2 * F(t) / m
 //     r(t + dt)   = r(t)        + dt   * v(t + dt/2)
 //     F(t + dt)   = forces at the new positions
 //     v(t + dt)   = v(t + dt/2) + dt/2 * F(t + dt) / m
-// F(t) is reused from the previous step when f->forces_valid is set,
+// F(t) is reused from the previous step when f.forces_valid() is true,
 // so each step costs one force evaluation. With periodic boundaries the
 // positions are wrapped back into the box.
-// Updates f in place and returns it, or NULL on error.
-XYZFrame* VelocityVerletStep(XYZFrame *f, double dt);
+// Updates f in place.
+// Throws std::invalid_argument for dt<=0;errors from ComputeForces propogate.
+void VelocityVerletStep(XYZFrame& f, double dt);
 
 #endif
 

@@ -23,7 +23,7 @@ Starting point: Lennard-Jones potential and hard spheres.
 Time integrator: Velocity-verlet
 
 -----------------------------------------------------
-7.10.2026:
+7.10.2026: (version 0.0.1 in plain C)
 
 - First version of the viewer for a single snapshot (mostly done with the help of claude)
 - Random number generator for uniform (xoshiro256*), normal (Box-Muller method) and Maxwell-Boltzmann distirbutions for a randomized initial configuration
@@ -46,3 +46,8 @@ no further compute is needed)
 (index search instead of string search)
 - Complete overhaul of the XYZFrame into a proper class (check frame.h for starters)
 - another element data structure change required due to the XYZFrame overhaul 
+-----------------------------------------------------
+13.10.2026:
+
+- Further overhaul of write and read functions w.r.t. new XYZFrame class
+

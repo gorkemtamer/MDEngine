@@ -1,9 +1,11 @@
 // Test:   make xyzio_test && bin/xyzio_test   (writes into output/)
 
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <cmath>
+#include <format>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
 #include "xyzio.h"
 #include "checkers.h"
 #include "paths.h"
@@ -11,8 +13,65 @@
 #include "params.h"
 #include "vec3.h"
 
-void xyz_free(XYZFrame *f) {
-    delete f; //free vectors!!!    
+
+namespace {
+[[noreturn]] void read_error(const std::string& path, const std::string& what)
+{
+    throw std::runtime_error("xyz_read: " + path + ": " + what);
+}
+}
+
+// ---------------------------------------------------------------------
+// Read an extended XYZ file into a freshly allocated XYZFrame.
+// Throws runtime_error on failure (bad file, malformed header, etc).
+// ---------------------------------------------------------------------
+XYZFrame xyz_read(const std::string& path){
+    std::ifstream in(path);
+    if (!in) read_error(path, "cannot open file");
+
+    std::string line;
+    //line 1: particle count
+    int n;
+    if (!std::getline(in, line) || !(std::istringstream(line) >> n) || n < 0)
+        read_error(path, "line 1 must be the particle count");
+
+    //line 2: comment, kept as it is
+    std::string comment;
+    if (!std::getline(in, comment)) read_error(path, "missing comment line");
+
+    //line 3: Lattice Lx Ly Lz periodic P
+    Vec3 box;
+    int flag;
+    Boundary bc;
+    std::string kw_lattice, kw_periodic;
+    if (!std::getline(in, line) || !(std::istringstream(line) >> kw_lattice >> box.x >> box.y >> box.z >> kw_periodic >> flag) ||
+        kw_lattice != "Lattice" || kw_periodic != "periodic" ||
+        box.x <= 0 || box.y <= 0 || box.z <= 0 || !boundary_from_flag(flag, bc))
+        read_error(path, "line 3 must be 'Lattice Lx Ly Lz periodic P' "
+                         "with positive lengths and P = 0 (open) or 1 (periodic)");
+    XYZFrame f(n, box, bc);
+    f.comment = comment;
+
+    //one row per particle: label x y z vx vy vz
+    for (int i = 0; i < n; ++i) {
+        if (!std::getline(in, line))
+            read_error(path, "file ends after " + std::to_string(i) + " of " + std::to_string(n) + " particles");
+        std::string label;
+        Vec3 r, v;
+        if (!(std::istringstream(line) >> label >> r.x >> r.y >> r.z >> v.x >> v.y >> v.z))
+            read_error(path, "malformed row for particle " + std::to_string(i));
+        int k = element_index(label.c_str());
+        if (k < 0)
+            read_error(path, "unknown element '" + label + "' (particle " + std::to_string(i) +
+                             "), add it to elements.cpp");
+        f.set_element(i, k);
+        f.set_pos(i, r);
+        f.set_vel(i, v);
+    }
+
+    if (int bad = CheckMinDistance(f); bad > 0)
+        read_error(path, std::to_string(bad) + " particle pair(s) too close");
+    return f;
 }
 
 // ---------------------------------------------------------------------
@@ -22,55 +81,45 @@ void xyz_free(XYZFrame *f) {
 //   line 3: Lattice Lx Ly Lz periodic P     (P = 1: periodic, 0: open)
 //   then label x y z vx vy vz, one row per particle.
 // ---------------------------------------------------------------------
-int xyz_write(const char *path, const XYZFrame *f) {
-    int bad = CheckMinDistance(f);
-    if (bad != 0) {
-        if (bad > 0) fprintf(stderr, "xyz_write: %d particle pair(s) too close, not writing %s\n", bad, path);
-        return -1;
+void xyz_write(const std::string& path, const XYZFrame& f){
+    if (int bad = CheckMinDistance(f); bad > 0)
+        throw std::runtime_error("xyz_write: " + path + ": " + std::to_string(bad) +
+                                 " particle pair(s) too close, not written");
+
+    std::ofstream out(path);
+    if (!out) throw std::runtime_error("xyz_write: cannot open " + path + " for writing");
+
+    const Vec3 L = f.box();
+    out << f.n() << '\n'
+        << f.comment << '\n'
+        << std::format("Lattice {:.6f} {:.6f} {:.6f} periodic {}\n",
+                       L.x, L.y, L.z, boundary_flag(f.boundary()));
+    for (int i = 0; i < f.n(); ++i) {
+        Vec3 r = f.pos(i), v = f.vel(i);
+        out << std::format("{} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f}\n",
+                           f.label(i), r.x, r.y, r.z, v.x, v.y, v.z);
     }
-
-    FILE *fp = fopen(path, "w");
-    if (!fp) { perror("xyz_write: fopen"); return -1; }
-
-    fprintf(fp, "%d\n", f->n());
-    fprintf(fp, "%s\n", f->comment.c_str());
-    fprintf(fp, "Lattice %.6f %.6f %.6f periodic %d\n",
-            f->box().x, f->box().y, f->box().z, boundary_flag(f->boundary()));
-
-    for (int i = 0; i < f->n(); ++i) {
-        Vec3 r = f-> pos(i), v = f->vel(i);
-        fprintf(fp, "%s %.6f %.6f %.6f %.6f %.6f %.6f\n",
-                f->label(i), r.x,r.y,r.z,v.x,v.y,v.z);
-    }
-
-    fclose(fp);
-    return 0;
+    if (!out) throw std::runtime_error("xyz_write: error while writing " + path);
 }
 
 // ---------------------------------------------------------------------
-// Place n particles uniformly at random in the unit box [0,1)^3, scale the
-// coordinates and the box by `scale`, and write the result to `path`.
-// Labels are "Ar". Velocities are drawn from the Maxwell-Boltzmann
-// distribution at DEFAULT_T (params.h), then the center-of-mass velocity
-// is subtracted so the system does not drift as a whole.
-// CheckMinDistance is also implemented to avoid overlaps.
-// Returns the frame (caller frees it with xyz_free), or nullptr on failure.
-//
+// Place n particles uniformly at random in [0, scale)^3, at least the minimum
+// distance apart; Maxwell-Boltzmann velocities at temperature T with the
+// center-of-mass velocity removed. Labels are "Ar". Nothing is written to disk.
+// Throws std::invalid_argument for n <= 0 or scale <= 0, std::runtime_error
+// if the box is too small for n particles.
 // ---------------------------------------------------------------------
-XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
-    if (n <= 0 || scale <= 0) {
-        fprintf(stderr, "xyz_random: need n > 0 and scale > 0 (got n=%d, scale=%g)\n", n, scale);
-        return nullptr;
-    }
+XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
+    if (n <= 0 || scale <= 0)
+        throw std::invalid_argument(std::format("RandomFrame: need n > 0 and scale > 0 (got n={}, scale={:g})", n, scale));
+    
+    // 1 1 1 box, scaled 
+    XYZFrame f(n, Vec3{scale,scale,scale},bc);
 
-    // 1 1 1 box, scaled, PBC
-    XYZFrame *f = new XYZFrame(n, Vec3{scale, scale, scale},Boundary::Periodic);
-
-    char buf[256];
-    snprintf(buf, sizeof(buf),"random geometry, n=%d, scale=%g", n, scale);
-    f->comment = buf;
+    f.comment = std::format("random geometry, n={}, scale={:g}", n, scale);
+    
     const int argon = element_index("Ar");
-    for (int i = 0; i < n; ++i) f->set_element(i,argon);
+    for (int i = 0; i < n; ++i) f.set_element(i,argon);
 
     // Rejection sampling: place particle i, redraw it while it is too close
     // to any earlier one (TooCloseToEarlier). Gives up if the box is too dense.
@@ -78,193 +127,98 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
     for (int i = 0; i < n; ++i) {
         int tries = 0;
         do {
-            if(++tries > max_tries) {
-                fprintf(stderr, "xyz_random: could not place particle %d after %d tries,"
-                "box too small for n=%d (increase scale)\n", i, max_tries, n);                
-                xyz_free(f);
-                return nullptr;
-            }
-            Vec3 r{ scale*rng_uniform(rng), scale*rng_uniform(rng), scale*rng_uniform(rng)};
-            f->set_pos(i, r);
+            if(++tries > max_tries) 
+                throw std::runtime_error(std::format("RandomFrame: could not place particle {} after {} tries, box too small for n={} (increase scale)", i, max_tries, n));
+            Vec3 r{ scale*rng_uniform(&rng), scale*rng_uniform(&rng), scale*rng_uniform(&rng)};
+            f.set_pos(i, r);
         } while (TooCloseToEarlier(f,i));
     }
 
-    // Maxwell-Boltzmann velocities at DEFAULT_T, using each particle's mass
+    // Maxwell-Boltzmann velocities at temperature T, using each particle's mass
     for (int i = 0; i < n; ++i) {
-        double m = f->mass(i);
+        double m = f.mass(i);
         Vec3 v{
-            rng_MaxwellBoltzmann(rng, DEFAULT_T, m),
-            rng_MaxwellBoltzmann(rng, DEFAULT_T, m),
-            rng_MaxwellBoltzmann(rng, DEFAULT_T, m)};
-        f->set_vel(i,v);
+            rng_MaxwellBoltzmann(&rng, T, m),
+            rng_MaxwellBoltzmann(&rng, T, m),
+            rng_MaxwellBoltzmann(&rng, T, m)};
+        f.set_vel(i,v);
     }
 
     // remove the center-of-mass velocity: total momentum becomes zero
-    const Vec3 vcm = f->TotalMomentum() / f->TotalMass();
-    for (int i = 0; i < n; ++i) f->set_vel(i,f->vel(i) - vcm);
+    const Vec3 vcm = f.TotalMomentum() / f.TotalMass();
+    for (int i = 0; i < n; ++i) f.set_vel(i,f.vel(i) - vcm);
 
-    if (xyz_write(path, f) != 0) { xyz_free(f); return nullptr; }
-    return f;
-}
-
-// ---------------------------------------------------------------------
-// Read an extended XYZ file into a freshly allocated XYZFrame.
-// Returns nullptr on failure (bad file, malformed header, etc).
-// ---------------------------------------------------------------------
-XYZFrame* xyz_read(const char *path) {
-    FILE *fp = fopen(path, "r");
-    if (!fp) { perror("xyz_read: fopen"); return nullptr; }
-
-    char line[512];
-    int n;
-
-    // line 1: particle count
-    if (!fgets(line, sizeof(line), fp) || sscanf(line, "%d", &n) != 1) {
-        fprintf(stderr, "xyz_read: failed to parse particle count\n");
-        fclose(fp);
-        return nullptr;
-    }
-
-    // line 2: comment (keep the whole line, minus trailing newline)
-    if (!fgets(line, sizeof(line), fp)) {
-        fprintf(stderr, "xyz_read: failed to read comment line\n");
-        fclose(fp);
-        return nullptr;
-    }
-    line[strcspn(line, "\n")] = '\0';
-    std::string comment = line;
-
-    // line 3: box lengths and boundary conditions, required
-    Vec3 box;
-    int flag;
-    Boundary bc;
-    if (!fgets(line, sizeof(line), fp) ||
-        sscanf(line, "Lattice %lf %lf %lf periodic %d",
-            &box.x, &box.y, &box.z, &flag) != 4 ||
-            box.x <= 0 || box.y <= 0 || box.z <= 0 ||
-            !boundary_from_flag(flag, bc)) {
-        fprintf(stderr, "xyz_read: line 3 must be 'Lattice Lx Ly Lz periodic P' "
-                        "with positive lengths and P = 0 (open) or 1 (periodic)\n");
-        fclose(fp);
-        return nullptr;
-    }
-
-    XYZFrame *f = new XYZFrame(n, box, bc); //box and flag already checked: cannot throw
-    f-> comment = comment;
-
-    // remaining lines: label x y z vx vy vz
-    for (int i = 0; i < n; ++i) {
-        if (!fgets(line, sizeof(line), fp)) {
-            fprintf(stderr, "xyz_read: unexpected EOF at row %d\n", i);
-            xyz_free(f); fclose(fp);
-            return nullptr;
-        }
-        char lbl[LABEL_LEN];
-        Vec3 r, v;
-        int ok = sscanf(line, "%7s %lf %lf %lf %lf %lf %lf",
-                         lbl, &r.x, &r.y, &r.z, &v.x, &v.y, &v.z);
-        if (ok != 7) {
-            fprintf(stderr, "xyz_read: malformed row %d (parsed %d fields)\n", i, ok);
-            xyz_free(f); fclose(fp);
-            return nullptr;
-        }
-        int k = element_index(lbl);
-        if (k<0)
-        {
-            fprintf(stderr, "xyz_read: unknown element '%s' in row %d, add it to elements.cpp\n",lbl,i);
-            xyz_free(f); fclose(fp);
-            return nullptr;
-        }        
-        f->set_element(i,k);
-        f->set_pos(i,r);
-        f->set_vel(i,v);
-    }
-
-    fclose(fp);
-
-    int bad = CheckMinDistance(f);
-    if (bad != 0) {
-        if (bad > 0) fprintf(stderr, "xyz_read: %d particle pair(s) too close in %s\n", bad, path);
-        xyz_free(f);
-        return nullptr;
-    }
     return f;
 }
 
 #ifdef XYZIO_TEST
 // print header, lattice and all rows of a frame
-static void print_frame(const XYZFrame *f) {
-    printf("Read back %d rows, comment: \"%s\"\n", f->n(), f->comment.c_str());
-    printf("Lattice: %g %g %g, %s boundaries\n", f->box().x, f->box().y, f->box().z,
-           boundary_name(f->boundary()));
+static void print_frame(const XYZFrame& f) {
+    printf("Read back %d rows, comment: \"%s\"\n", f.n(), f.comment.c_str());
+    printf("Lattice: %g %g %g, %s boundaries\n", f.box().x, f.box().y, f.box().z,
+           boundary_name(f.boundary()));
     printf("%-4s %10s %10s %10s %10s %10s %10s\n",
            "lbl", "x", "y", "z", "vx", "vy", "vz");
-    for (int i = 0; i < f->n(); ++i) {
-        Vec3 r = f-> pos(i), v = f->vel(i);
+    for (int i = 0; i < f.n(); ++i) {
+        Vec3 r = f.pos(i), v = f.vel(i);
         printf("%-4s %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f\n",
-               f->label(i), r.x,r.y,r.z,v.x,v.y,v.z);
+               f.label(i), r.x, r.y, r.z, v.x, v.y, v.z);
     }
 }
 
 // ---------------------------------------------------------------------
 // Test 1: build a small frame in memory, write it, read it back, compare.
-// Test 2: generate a random frame, read it back, print it.
+// Test 2: generate a random frame, write it, read it back, print it.
 // ---------------------------------------------------------------------
 int main(void) {
-    printf("== Test 1: write / read round-trip ==\n");
-    const char *path = OUTPUT_DIR "test.xyz";
-    int n = 4;
+    try {
+        printf("== Test 1: write / read round-trip ==\n");
+        const char *path = OUTPUT_DIR "test.xyz";
+        int n = 4;
 
-    XYZFrame *out = new XYZFrame(n, Vec3{10.,10.,10.},Boundary::Periodic);
-    char buf[64];
-    snprintf(buf, sizeof(buf), "test frame, n=%d", n);
-    out->comment = buf;
+        XYZFrame out(n, Vec3{ 10., 10., 10. }, Boundary::Periodic);
+        out.comment = std::format("test frame, n={}", n);
+        for (int i = 0; i < n; ++i) {
+            out.set_element(i, element_index("Ar"));
+            out.set_pos(i, Vec3{ i * 1.1, i * 2.2, i * 3.3 });
+            out.set_vel(i, Vec3{ 0.1 * i, -0.1 * i, 0.05 * i });
+        }
 
-    for (int i = 0; i < n; ++i) {
-        out->set_element(i, element_index("Ar"));
-        out->set_pos(i, Vec3{ i * 1.1, i * 2.2, i * 3.3 });
-        out->set_vel(i, Vec3{ 0.1 * i, -0.1 * i, 0.05 * i });
+        xyz_write(path, out);
+        printf("Wrote %s\n", path);
+
+        XYZFrame in = xyz_read(path);
+        print_frame(in);
+
+        // Sanity check: compare with a small tolerance, not exact equality.
+        // %.6f only keeps 6 digits after the decimal point, which is not always
+        // enough to recover the exact same double bit pattern you started with
+        // (e.g. 3*1.1 can come back a few ULPs off after a text round-trip).
+        // That's expected and fine for this file format; use a tolerance here,
+        // and never compare floating-point values with == in general.
+        const double tol = 1e-6;
+        int mismatch = 0;
+        for (int i = 0; i < n; ++i) {
+            if (std::fabs(out.pos(i).x - in.pos(i).x) > tol ||
+                std::fabs(out.vel(i).z - in.vel(i).z) > tol) mismatch = 1;
+        }
+        printf(mismatch ? "MISMATCH after round-trip!\n" : "Round-trip OK (within 1e-6 tolerance).\n");
+
+        printf("\n== Test 2: random geometry ==\n");
+        const char *rpath = OUTPUT_DIR "random_test.xyz";
+        Rng rng;
+        rng_seed(&rng, 42);      // fixed seed: same geometry every run
+
+        XYZFrame gen = RandomFrame(10, 5.0, Boundary::Periodic, DEFAULT_T, rng);
+        xyz_write(rpath, gen);
+        printf("Wrote %s\n", rpath);
+
+        XYZFrame rin = xyz_read(rpath);
+        print_frame(rin);
+    } catch (const std::exception& e) {
+        fprintf(stderr, "xyzio_test: %s\n", e.what());
+        return 1;
     }
-
-    if (xyz_write(path, out) != 0) { xyz_free(out); return 1; }
-    printf("Wrote %s\n", path);
-
-    XYZFrame *in = xyz_read(path);
-    if (!in) { xyz_free(out); return 1; }
-
-    print_frame(in);
-
-    // Sanity check: compare with a small tolerance, not exact equality.
-    // %.6f only keeps 6 digits after the decimal point, which is not always
-    // enough to recover the exact same double bit pattern you started with
-    // (e.g. 3*1.1 can come back a few ULPs off after a text round-trip).
-    // That's expected and fine for this file format; use a tolerance here,
-    // and never compare floating-point values with == in general.
-    const double tol = 1e-6;
-    int mismatch = 0;
-    for (int i = 0; i < n; ++i) {
-        if (std::fabs(out->pos(i).x - in->pos(i).x) > tol || std::fabs(out->vel(i).z - in->vel(i).z) > tol) mismatch = 1;
-    }
-    printf(mismatch ? "MISMATCH after round-trip!\n" : "Round-trip OK (within 1e-6 tolerance).\n");
-
-    xyz_free(out);
-    xyz_free(in);
-
-    printf("\n== Test 2: random geometry ==\n");
-    const char *rpath = OUTPUT_DIR "random_test.xyz";
-    Rng rng;
-    rng_seed(&rng, 42);      // fixed seed: same geometry every run
-
-    XYZFrame *gen = xyz_random(rpath, 10, 5.0, &rng);
-    if (!gen) return 1;
-    xyz_free(gen);              // only the file is needed from here on
-    printf("Wrote %s\n", rpath);
-
-    XYZFrame *rin = xyz_read(rpath);
-    if (!rin) return 1;
-    print_frame(rin);
-    xyz_free(rin);
-
     return 0;
 }
 
