@@ -15,7 +15,7 @@
 int TooCloseToEarlier(const XYZFrame *f, int i);
 
 // Checks every pair of particles against the minimum distance
-// MIN_DIST_FACTOR * (element_radius(i) + element_radius(j)), in reduced
+// MIN_DIST_FACTOR * (sigma_i/2 + sigma_j/2), in reduced
 // units (see elements.h / elements.cpp).
 // Distances depend on f->boundary:
 //   Boundary::Periodic  minimum-image convention (nearest copy of j in the
@@ -24,8 +24,6 @@ int TooCloseToEarlier(const XYZFrame *f, int i);
 // The XYZFrame constructor guarantees a valid boundary and positive box.
 // Returns  0  all pairs are far enough apart,
 //         >0  number of pairs that are too close,
-//         -1  a particle without a radius in elements.cpp (printed to stderr;
-//             cannot happen for frames from xyz_read, which rejects unknown labels).
 
 int CheckMinDistance(const XYZFrame *f);
 

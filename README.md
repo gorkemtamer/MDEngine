@@ -15,7 +15,7 @@ layout:
  - input/   input .xyz files
  - output/  generated files
 
-units: everything is in reduced (Lennard-Jones) units, see reduced_units.md
+units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
 
 Starting point: Lennard-Jones potential and hard spheres.
@@ -45,3 +45,4 @@ hardcoded to a LJ potential (epot is computed directly from dU/dr analytically)
 no further compute is needed)
 (index search instead of string search)
 - Complete overhaul of the XYZFrame into a proper class (check frame.h for starters)
+- another element data structure change required due to the XYZFrame overhaul 

@@ -45,14 +45,13 @@ public:
     
     std::string comment; //comment in the input file (line 2)
 
-    
+    //rest of the physics
     double KineticEnergy() const;
+    double TotalMass() const;
     Vec3 TotalMomentum() const;
-    Vec3 CenterOfMass() const;
-    Vec3 MinImage(Vec3 d) const; //plane d for OBC, nearest image for PBC
-    Vec3 wrap(Vec3 r) const; //into the box for PBC, nothing for OBC
-
-    //forces and potential energy
+    Vec3 CenterOfMass() const; 
+    Vec3 MinImage(Vec3 d) const; //plain d for OBC, nearest image for PBC
+    Vec3 Wrap(Vec3 r) const; //into the box for PBC, nothing for OBC
 
 private:
     Vec3 box_;

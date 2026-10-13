@@ -305,7 +305,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < f->n(); ++i) {
                 Vector3 p = v3(f->pos(i));
                 Color col = types.color[type_of[i]];
-                float radius = (float)element_radius(f->label(i));   // sigma_i / 2
+                float radius = (float)(0.5 * f->element(i).sigma);   // sigma_i / 2
                 DrawSphere(p, radius, col);
                 DrawSphereWires(p, radius, 8, 8, ColorBrightness(col, -0.4f));
                 if (show_v) {

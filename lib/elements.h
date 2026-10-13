@@ -36,14 +36,4 @@ const Element& element(int index);
 // Number of elements in the table.
 int element_count();
 
-// ---------------------------------------------------------------------
-// Label-based lookups, kept so existing code compiles unchanged.
-// Each call searches the table by name; prefer element_index() + element()
-// in loops. To be removed once frames store element indices (Phase 3).
-// All return -1.0 if the label is unknown.
-// ---------------------------------------------------------------------
-double element_radius(const char *label);    // sigma_i / 2
-double element_mass(const char *label);      // m_i
-double element_epsilon(const char *label);   // epsilon_i
-
 #endif

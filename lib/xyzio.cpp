@@ -90,8 +90,6 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
     }
 
     // Maxwell-Boltzmann velocities at DEFAULT_T, using each particle's mass
-    Vec3 p{}; // total momentum
-    double mtot = 0; // total mass
     for (int i = 0; i < n; ++i) {
         double m = f->mass(i);
         Vec3 v{
@@ -99,12 +97,10 @@ XYZFrame* xyz_random(const char *path, int n, double scale, Rng *rng) {
             rng_MaxwellBoltzmann(rng, DEFAULT_T, m),
             rng_MaxwellBoltzmann(rng, DEFAULT_T, m)};
         f->set_vel(i,v);
-        p += m * v;
-        mtot += m;
     }
 
     // remove the center-of-mass velocity: total momentum becomes zero
-    const Vec3 vcm = p / mtot;
+    const Vec3 vcm = f->TotalMomentum() / f->TotalMass();
     for (int i = 0; i < n; ++i) f->set_vel(i,f->vel(i) - vcm);
 
     if (xyz_write(path, f) != 0) { xyz_free(f); return NULL; }

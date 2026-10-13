@@ -13,7 +13,6 @@
 int ComputeForces(XYZFrame *f) {
     const int n = f->n();
     const double L[3] = {f -> box().x, f-> box().y, f-> box().z};
-    const Vec3 box{ L[0], L[1], L[2]};
 
     // per-particle sigma and epsilon, looked up once instead of once per pair
     double *sig = static_cast<double*>(malloc(n * sizeof(double)));
@@ -25,16 +24,8 @@ int ComputeForces(XYZFrame *f) {
     }
     double sig_max = 0;
     for (int i = 0; i < n; ++i) {
-        double r = element_radius(f->label(i));
-        double e = element_epsilon(f->label(i));
-        if (r < 0 || e < 0) {
-            fprintf(stderr, "ComputeForces: no LJ parameters for label '%s' (particle %d)\n",
-                    f->label(i), i);
-            free(sig); free(eps);
-            return -1;
-        }
-        sig[i] = 2.0 * r;
-        eps[i] = e;
+        sig[i] = f-> element(i).sigma;
+        eps[i] = f-> element(i).eps;
         if (sig[i] > sig_max) sig_max = sig[i];
     }
 
@@ -58,8 +49,7 @@ int ComputeForces(XYZFrame *f) {
     double U = 0.0;
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
-            Vec3 d = f->pos(i) - f->pos(j);
-            if (f-> boundary() == Boundary::Periodic) d = min_image(d,box);
+            Vec3 d = f->MinImage(f->pos(i) - f->pos(j));
             double r2 = norm2(d);
 
             double s  = 0.5 * (sig[i] + sig[j]);      // Lorentz
@@ -91,11 +81,6 @@ int ComputeForces(XYZFrame *f) {
     return 0;
 }
 
-// wrap x into [0, L)
-static double wrap(double x, double L) {
-    return x - L * floor(x / L);
-}
-
 XYZFrame* VelocityVerletStep(XYZFrame *f, double dt) {
     if (dt <= 0) {
         fprintf(stderr, "VelocityVerletStep: time step must be positive (got %g)\n", dt);
@@ -105,17 +90,12 @@ XYZFrame* VelocityVerletStep(XYZFrame *f, double dt) {
     // F(t): only needed on the first step, afterwards it is kept from the previous step
     if (!f->forces_valid() && ComputeForces(f) != 0) return NULL;
 
-    const Vec3 L = f->box();
-    const bool periodic = f->boundary()==Boundary::Periodic;
-
     // half kick + drift
     for (int i = 0; i < f->n(); ++i) {
         double h = 0.5 * dt / f->mass(i);
         Vec3 v = f->vel(i) + h * f->force(i);
         f->set_vel(i,v);
-        Vec3 r = f->pos(i)+dt*v;
-        if (periodic) r = Vec3{wrap(r.x,L.x),wrap(r.y,L.y),wrap(r.z,L.z)};
-        f -> set_pos(i,r);
+        f-> set_pos(i,f->Wrap(f->pos(i)+dt*v));
     }
 
     // F(t + dt)

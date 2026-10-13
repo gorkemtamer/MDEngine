@@ -76,18 +76,3 @@ const Element& element(int index) {
 int element_count() {
     return N_ELEMENTS;
 }
-
-double element_radius(const char *label) {
-    int k = element_index(label);
-    return k >= 0 ? 0.5 * TABLE[k].sigma : -1.0;
-}
-
-double element_mass(const char *label) {
-    int k = element_index(label);
-    return k >= 0 ? TABLE[k].mass : -1.0;
-}
-
-double element_epsilon(const char *label) {
-    int k = element_index(label);
-    return k >= 0 ? TABLE[k].eps : -1.0;
-}

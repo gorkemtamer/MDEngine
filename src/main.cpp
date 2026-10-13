@@ -64,7 +64,7 @@ int main(){
     if (xyz_write(INPUT_DIR "initialconfig.xyz", geom) != 0) { xyz_free(geom); return 1; }
     printf("Initial geometry written to output/ and input/initialconfig.xyz\n");
 
-    double ekin = KineticEnergy(geom);
+    double ekin = geom->KineticEnergy();
     double epot = PotentialEnergy(geom);
     if (isnan(epot)) { xyz_free(geom); return 1; }
     printf("%5s %8s %12s %12s %12s\n", "step", "t", "Ekin", "Epot", "Etot");
@@ -90,7 +90,7 @@ int main(){
         snprintf(path, sizeof(path), OUTPUT_DIR "step%d.xyz", step);
         if (xyz_write(path, geom) != 0) { xyz_free(geom); return 1; }
 
-        ekin = KineticEnergy(geom);
+        ekin = geom -> KineticEnergy();
         epot = PotentialEnergy(geom);      /* forces are fresh after the step: no recomputation */
         printf("%5d %8.3f %12.6f %12.6f %12.6f\n", step, step * dt, ekin, epot, ekin + epot);
     }
