@@ -47,7 +47,7 @@ no further compute is needed)
 - Complete overhaul of the XYZFrame into a proper class (check frame.h for starters)
 - another element data structure change required due to the XYZFrame overhaul 
 -----------------------------------------------------
-13.10.2026:
+13.10.2026: (version 0.0.2 now in cpp)
 
 - Further overhaul of write and read functions w.r.t. new XYZFrame class
-
+- Proper conversion to cpp now works exactly same as the plain c version
