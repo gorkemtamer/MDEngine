@@ -83,9 +83,10 @@ main_reference and xyzio_test are only once at the moment (for consistency)
 - new rng class (from struct to object)
 - 4 physics tests and 1 rng test 
 -----------------------------------------------------
-14.10.2026:
+14.10.2026: (version 0.0.3 cpp)
 
 - New object `potential` to tidy up the code furthermore
 (main objective: have divided classes for geometry (`XYZFrame`), force fields, and integrators
 for an organized structure)
 - Harmonic trap potential is added: additional test: trap_test
+- Na and Cl added to elements and charges are now registered for future implementation

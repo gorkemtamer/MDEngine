@@ -33,13 +33,15 @@ belong to the same fit:
 
 | Base unit | Symbol | Value | Defined in code |
 |---|---|---|---|
-| length | σ_Ar | 3.418 Å | `SIGMA_REF` in `lib/elements.cpp` |
-| energy | ε_Ar | ε/k_B = 124.0 K | `EPS_REF` in `lib/elements.cpp` |
-| mass | m_Ar | 39.948 u | `MASS_REF` in `lib/elements.cpp` |
+| length | σ_Ar | 3.418 Å | `SIGMA_REF` in `lib/units.h` |
+| energy | ε_Ar | ε/k_B = 124.0 K | `EPS_REF` in `lib/units.h` |
+| mass | m_Ar | 39.948 u | `MASS_REF` in `lib/units.h` |
 | Boltzmann constant | k_B | 1 | implicit |
+| charge | e | 1.602 × 10⁻¹⁹ C | charges are given in units of e (not reduced) |
 
 If you change the reference (e.g. to σ = 3.405 Å, ε/k_B = 119.8 K, another
-common Ar set), update `SIGMA_REF` / `MASS_REF` and every table below.
+common Ar set), update the constants in `lib/units.h` and every table below.
+The Coulomb constant below is computed from them automatically.
 
 ## Derived units
 
@@ -59,6 +61,17 @@ reference above.
 | number density | 1 / σ³ | 2.504 × 10²⁸ m⁻³ | n = ρ\* / σ³ |
 | mass density | m / σ³ | 1661 kg/m³ | ρ = ρ\* · m/σ³ |
 
+Charges and the Coulomb constant: charges stay in units of e, so the
+Coulomb energy of two charges q_i, q_j (in e) at distance r\* (in σ) is
+
+    U* = K* · q_i q_j / r*,    K* = e² / (4π ε₀ σ_Ar ε_Ar) = 394.26
+
+(`COULOMB_K` in `lib/units.h`, computed from the SI constants). Two unit
+charges at 1 σ therefore interact about 400 times more strongly than two
+argon atoms at their LJ minimum. Ionic systems move correspondingly faster:
+a Na⁺–Cl⁻ pair vibrates with a period of about 0.036 τ (argon: ~1 τ), so
+they need a time step of about 0.001 τ or smaller.
+
 Handy numbers:
 
 | | Reduced | Physical (Ar) |
@@ -76,22 +89,24 @@ a cut-off potential shifts them slightly.
 
 σ, ε and mass are written in `lib/elements.cpp` in Å, K and u, and
 converted once, at compile time, to reduced units. `element(element_index(label))`
-returns an `Element` with `.sigma` = σ_i / σ_Ar, `.eps` = ε_i / ε_Ar and
-`.mass` = m_i / m_Ar. For particle i of a frame, `f->element(i)` gives the
+returns an `Element` with `.sigma` = σ_i / σ_Ar, `.eps` = ε_i / ε_Ar,
+`.mass` = m_i / m_Ar and `.charge` = q_i / e. For particle i of a frame, `f->element(i)` gives the
 same `Element` and `f->mass(i)` its mass. The particle radius used by the
 minimum-distance check and the viewer is σ_i / 2.
 
-| Element | σ (Å) | σ\* | radius\* = σ\*/2 | mass (u) | m\* | ε/k_B (K) | ε\* |
-|---|---|---|---|---|---|---|---|
-| H  | 2.500 | 0.7314 | 0.3657 | 1.008   | 0.0252 | 15.1  | 0.122 |
-| C  | 3.500 | 1.0240 | 0.5120 | 12.011  | 0.3007 | 33.2  | 0.268 |
-| N  | 3.250 | 0.9508 | 0.4754 | 14.007  | 0.3506 | 85.5  | 0.690 |
-| O  | 2.960 | 0.8660 | 0.4330 | 15.999  | 0.4005 | 105.7 | 0.852 |
-| He | 2.576 | 0.7537 | 0.3768 | 4.0026  | 0.1002 | 10.22 | 0.0824 |
-| Ne | 2.789 | 0.8160 | 0.4080 | 20.180  | 0.5052 | 35.7  | 0.288 |
-| **Ar** | **3.418** | **1** | **0.5** | **39.948** | **1** | **124.0** | **1** |
-| Kr | 3.610 | 1.0562 | 0.5281 | 83.798  | 2.0977 | 190   | 1.532 |
-| Xe | 4.055 | 1.1864 | 0.5932 | 131.293 | 3.2866 | 229   | 1.847 |
+| Element | σ (Å) | σ\* | radius\* = σ\*/2 | mass (u) | m\* | ε/k_B (K) | ε\* | q (e) |
+|---|---|---|---|---|---|---|---|---|
+| H  | 2.500 | 0.7314 | 0.3657 | 1.008   | 0.0252 | 15.1  | 0.122 | 0 |
+| C  | 3.500 | 1.0240 | 0.5120 | 12.011  | 0.3007 | 33.2  | 0.268 | 0 |
+| N  | 3.250 | 0.9508 | 0.4754 | 14.007  | 0.3506 | 85.5  | 0.690 | 0 |
+| O  | 2.960 | 0.8660 | 0.4330 | 15.999  | 0.4005 | 105.7 | 0.852 | 0 |
+| He | 2.576 | 0.7537 | 0.3768 | 4.0026  | 0.1002 | 10.22 | 0.0824 | 0 |
+| Ne | 2.789 | 0.8160 | 0.4080 | 20.180  | 0.5052 | 35.7  | 0.288 | 0 |
+| **Ar** | **3.418** | **1** | **0.5** | **39.948** | **1** | **124.0** | **1** | **0** |
+| Kr | 3.610 | 1.0562 | 0.5281 | 83.798  | 2.0977 | 190   | 1.532 | 0 |
+| Xe | 4.055 | 1.1864 | 0.5932 | 131.293 | 3.2866 | 229   | 1.847 | 0 |
+| Na | 2.350 | 0.6875 | 0.3438 | 22.990  | 0.5755 | 65.42 | 0.528 | +1 |
+| Cl | 4.400 | 1.2873 | 0.6437 | 35.45   | 0.8874 | 50.32 | 0.406 | −1 |
 
 Sources and caveats:
 
@@ -100,7 +115,10 @@ Sources and caveats:
   O. Converted with 1 kcal/mol = 503.2 K. These atoms' parameters
   depend strongly on their chemical environment, so treat them as rough
   placeholders.
+- **Na⁺, Cl⁻:** σ, ε from Smith & Dang (1994), converted with
+  1 kcal/mol = 503.22 K. In `.xyz` files they are labelled `Na` and `Cl`.
 - **Masses:** IUPAC standard atomic weights.
+- **Charges:** per element; 0 for all neutral atoms.
 
 ## Mixing rules for unlike pairs
 
@@ -131,7 +149,8 @@ Because a particle's radius is σ_i / 2, the sum of two radii is σ_ij.
 | `XYZFrame::KineticEnergy()`, `XYZFrame::PotentialEnergy()`, `PotentialEnergy(f)` (`lib/measure.h`) | energies | ε |
 | `XYZFrame::TotalMomentum()` | total momentum | m_Ar σ/τ |
 | `VelocityVerletStep(f, dt)` | time step | τ (typical 0.005 ≈ 10.6 fs) |
-| `Element.sigma`, `.eps`, `.mass` (`element(k)`) | σ_i, ε_i, m_i | σ_Ar, ε_Ar, m_Ar |
+| `Element.sigma`, `.eps`, `.mass`, `.charge` (`element(k)`) | σ_i, ε_i, m_i, q_i | σ_Ar, ε_Ar, m_Ar, e |
+| `COULOMB_K` in `lib/units.h` (= 394.26) | Coulomb constant e²/(4πε₀σε) | ε σ / e² |
 
 Example: a Maxwell–Boltzmann velocity for argon at 100 K is
 `rng_MaxwellBoltzmann(&rng, 100.0 / 124.0, element(element_index("Ar")).mass)`,
