@@ -26,7 +26,7 @@ struct ReturnError {
 };
 
 // N steps forward, flip velocities, N steps forward.
-static ReturnError run_and_return(XYZFrame& f, double dt, int steps) {
+static ReturnError run_and_return(XYZFrame& f, const ForceField& ff, double dt, int steps) {
     const int n = f.n();
     std::vector<Vec3> r0(n), v0(n);
     for (int i = 0; i < n; ++i) {
@@ -34,9 +34,9 @@ static ReturnError run_and_return(XYZFrame& f, double dt, int steps) {
         v0[i] = f.vel(i);
     }
 
-    for (int s = 0; s < steps; ++s) VelocityVerletStep(f, dt);
+    for (int s = 0; s < steps; ++s) VelocityVerletStep(f, ff, dt);
     for (int i = 0; i < n; ++i) f.set_vel(i, -f.vel(i));
-    for (int s = 0; s < steps; ++s) VelocityVerletStep(f, dt);
+    for (int s = 0; s < steps; ++s) VelocityVerletStep(f, ff, dt);
 
     ReturnError e{ 0, 0 };
     for (int i = 0; i < n; ++i) {
@@ -52,15 +52,16 @@ int main() {
         const double dt = 0.005;
         const int steps = 500;
         const double tol = 1e-8;
+        const ForceField ff = LJForceField();
         Rng rng(7);
 
         XYZFrame p = LatticeFrame(5, 1.2, 1.0, rng);
-        ReturnError e = run_and_return(p, dt, steps);
+        ReturnError e = run_and_return(p, ff, dt, steps);
         check(e.pos < tol, "periodic: max distance from start position", e.pos);
         check(e.vel < tol, "periodic: max |v_end + v_start|", e.vel);
 
         XYZFrame o = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng);
-        e = run_and_return(o, dt, steps);
+        e = run_and_return(o, ff, dt, steps);
         check(e.pos < tol, "open: max distance from start position", e.pos);
         check(e.vel < tol, "open: max |v_end + v_start|", e.vel);
     } catch (const std::exception& e) {

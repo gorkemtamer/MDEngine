@@ -1,14 +1,11 @@
-// measure.c
+// measure.cpp
 //
 // Observables of a single frame.
 
-#include <cmath>
 #include "measure.h"
-#include "integrator.h"
-#include "elements.h"
 
-double PotentialEnergy(XYZFrame& f) {
-    // one LJ implementation for forces and energy: reuse ComputeForces
-    if (!f.forces_valid()) ComputeForces(f) ;
+double PotentialEnergy(XYZFrame& f, const ForceField& ff) {
+    // forces and energy come from the same computation: reuse it
+    if (!f.forces_valid()) ff.Compute(f);
     return f.PotentialEnergy();
 }

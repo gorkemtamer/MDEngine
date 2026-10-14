@@ -9,7 +9,10 @@
 */
 
 #include <cstdio>
+#include <memory>
 #include "xyzio.h"   // LatticeFrame
+#include "forcefield.h"
+#include "lennard_jones.h"
 
 // #failed checks in this test program
 inline int g_failures = 0;
@@ -35,4 +38,11 @@ inline int test_result(){
     }
     std::printf("%d check(s) FAILED\n", g_failures);
     return 1;
+}
+
+// The interactions used by the physics tests: Lennard-Jones only, default cutoff.
+inline ForceField LJForceField() {
+    ForceField ff;
+    ff.Add(std::make_unique<LennardJones>());
+    return ff;
 }

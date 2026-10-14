@@ -19,8 +19,8 @@
 #include "test_helpers.h"
 
 // |sum_i F_i| / sum_i |F_i|: zero if all forces cancel
-static double force_sum_error(XYZFrame& f) {
-    ComputeForces(f);
+static double force_sum_error(XYZFrame& f, const ForceField& ff) {
+    ff.Compute(f);
     Vec3 sum{};
     double scale = 0;
     for (int i = 0; i < f.n(); ++i) {
@@ -56,6 +56,7 @@ int main() {
     try {
         const double dt = 0.005;
         const int steps = 500;
+        const ForceField ff = LJForceField();
         Rng rng(3);
         // perturbed lattice with Ar, Kr, Ne (as in force_test)
         XYZFrame p = LatticeFrame(5, 1.2, 1., rng);
@@ -65,19 +66,19 @@ int main() {
             Vec3 d{0.2 * rng.uniform() - 0.1, 0.2 * rng.uniform() - 0.1, 0.2 * rng.uniform() - 0.1};
             p.set_pos(i, p.pos(i) + d);
         } 
-        double err = force_sum_error(p);
+        double err = force_sum_error(p, ff);
         check( err < 1e-12, "periodic: |sum F| / |F|", err);
                 Vec3 P0 = p.TotalMomentum();
         double dP = 0, scale = momentum_scale(p);
         for (int s = 0; s < steps; ++s) {
-            VelocityVerletStep(p, dt);
+            VelocityVerletStep(p, ff, dt);
             dP = std::fmax(dP, norm(p.TotalMomentum() - P0));
         }
         check(dP / scale < 1e-12, "periodic: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
 
         // open: random geometry
         XYZFrame o = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng);
-        err = force_sum_error(o);
+        err = force_sum_error(o, ff);
         check(err < 1e-12, "open: |sum F| / sum |F|", err);
 
         P0 = o.TotalMomentum();
@@ -87,7 +88,7 @@ int main() {
         scale = momentum_scale(o);
         double lscale = angular_scale(o);
         for (int s = 0; s < steps; ++s) {
-            VelocityVerletStep(o, dt);
+            VelocityVerletStep(o, ff, dt);
             dP = std::fmax(dP, norm(o.TotalMomentum() - P0));
             dL = std::fmax(dL, norm(angular_momentum(o) - L0));
         }

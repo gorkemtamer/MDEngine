@@ -11,6 +11,8 @@
 #include "integrator.h"
 #include "checkers.h"
 #include "measure.h"
+#include "forcefield.h"
+#include "lennard_jones.h"
 
 /* Runs n_steps velocity-Verlet steps of length dt on geom, checking the
    minimum distance after every step. Writes the start geometry
@@ -18,18 +20,18 @@
    created if needed, and prints the energies. 
    Later to be implemented as the main scheme.
    */
-static void RunMD(XYZFrame& geom, const std::string& dir, double dt, int n_steps) {
+static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir, double dt, int n_steps) {
     std::filesystem::create_directories(dir);
     xyz_write(dir + "initialconfig.xyz", geom);
 
     double ekin = geom.KineticEnergy();
-    double epot = PotentialEnergy(geom);
+    double epot = PotentialEnergy(geom, ff);
     printf("%5s %8s %12s %12s %12s\n", "step", "t", "Ekin", "Epot", "Etot");
     printf("%5d %8.3f %12.6f %12.6f %12.6f\n", 0, 0.0, ekin, epot, ekin + epot);
 
     for (int step = 1; step <= n_steps; ++step) {
         /* updates geom in place, so it already is the new geometry */
-        VelocityVerletStep(geom, dt);
+        VelocityVerletStep(geom, ff, dt);
         if (CheckMinDistance(geom) != 0) throw std::runtime_error("minDistance failed at step " + std::to_string(step));
         geom.comment = std::format("MD step {}, t = {:g}", step, step * dt);
         xyz_write(dir + std::format("step{:04d}.xyz", step), geom);
@@ -61,6 +63,10 @@ int main() {
     printf("--------------------------------\n");
     printf("Testing Velocity-Verlet scheme for 100 timesteps\n");
 
+    /* interactions: Lennard-Jones only, default cutoff */
+    ForceField ff;
+    ff.Add(std::make_unique<LennardJones>());
+
     const double dt      = 0.005;  /* time step in tau */
     const int    n_steps = 1000;
 
@@ -73,7 +79,7 @@ int main() {
     xyz_write(INPUT_DIR "initialconfig.xyz", geom);
     printf("RandomFrame: %d particles, frames in output/RandomFrame/, "
            "initial geometry also in input/initialconfig.xyz\n", geom.n());
-    RunMD(geom, std::string(OUTPUT_DIR) + "RandomFrame/", dt, n_steps);
+    RunMD(geom, ff, std::string(OUTPUT_DIR) + "RandomFrame/", dt, n_steps);
     printf("--------------------------------\n");
 
     /* 2. lattice initial geometry (same as in tests/force_test.cpp),
@@ -83,7 +89,7 @@ int main() {
     XYZFrame lattice = LatticeFrame(5, 1.2, DEFAULT_T, lattice_rng);
     printf("LatticeFrame: %d particles on a 5x5x5 simple cubic lattice (spacing 1.2), "
            "frames in output/LatticeFrame/\n", lattice.n());
-    RunMD(lattice, std::string(OUTPUT_DIR) + "LatticeFrame/", dt, n_steps);
+    RunMD(lattice, ff, std::string(OUTPUT_DIR) + "LatticeFrame/", dt, n_steps);
     printf("--------------------------------\n");
     return 0;
     } catch (const std::exception& e) {

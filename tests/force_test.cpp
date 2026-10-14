@@ -31,8 +31,8 @@ static double  comp(const Vec3& v, int k) { return k == 0 ? v.x : (k == 1 ? v.y 
 
 // Largest |F_num - F| over all particles and components, divided by the
 // largest |F| (so the result is a relative error).
-static double max_force_error(XYZFrame& f, double h) {
-    ComputeForces(f);
+static double max_force_error(XYZFrame& f, const ForceField& ff, double h) {
+    ff.Compute(f);
     std::vector<Vec3> F(f.n());
     double fmax = 0;
     for (int i = 0; i < f.n(); ++i) {
@@ -44,8 +44,8 @@ static double max_force_error(XYZFrame& f, double h) {
         const Vec3 r0 = f.pos(i);
         for (int k = 0; k < 3; ++k) {
             Vec3 r = r0;
-            comp(r, k) = comp(r, k) + h;  f.set_pos(i, r);  double up = PotentialEnergy(f);
-            comp(r, k) = comp(r0, k) - h; f.set_pos(i, r);  double um = PotentialEnergy(f);
+            comp(r, k) = comp(r, k) + h;  f.set_pos(i, r);  double up = PotentialEnergy(f, ff);
+            comp(r, k) = comp(r0, k) - h; f.set_pos(i, r);  double um = PotentialEnergy(f, ff);
             f.set_pos(i, r0);
             double f_num = -(up - um) / (2 * h);
             err = std::fmax(err, std::fabs(f_num - comp(F[i], k)));
@@ -58,6 +58,7 @@ int main(){
     try{
         const double h = 1e-6; //FD step (sigma)
         const double tol = 1e-6; // tol by rel error
+        const ForceField ff = LJForceField();
 
         //periodic: 5x5x5 lattice (spacing 1.2), every particle shifted randomly
         //by up to 0.1 sigma per direction (a perfect lattice has zero forces by
@@ -70,12 +71,12 @@ int main(){
             Vec3 d{ 0.2 * rng.uniform() - 0.1, 0.2 * rng.uniform() - 0.1, 0.2 * rng.uniform() - 0.1 };
             p.set_pos(i, p.pos(i) + d);
         }
-        double err = max_force_error(p, h);
+        double err = max_force_error(p, ff, h);
         check(err < tol, "periodic, Ar/Kr/Ne: max |F_num - F| / max |F|", err);
 
         // open: random geometry
         XYZFrame o = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng);
-        err = max_force_error(o, h);
+        err = max_force_error(o, ff, h);
         check(err < tol, "open, Ar: max |F_num - F| / max |F|", err);
 
         // one Ar-Kr pair at distance r: U = 4 eps_ij [(s/r)^12 - (s/r)^6] - shift,
@@ -93,7 +94,7 @@ int main(){
         pair.set_element(1, element_index("Kr"));
         pair.set_pos(0, Vec3{ 4, 5, 5 });
         pair.set_pos(1, Vec3{ 4 + r, 5, 5 });
-        double U = PotentialEnergy(pair);
+        double U = PotentialEnergy(pair, ff);
         check(std::fabs(U - expected) < 1e-12 * std::fabs(expected),
               "Ar-Kr pair energy vs. LJ formula (relative error)", std::fabs(U - expected) / std::fabs(expected));
     } catch(const std::exception& e){

@@ -2,24 +2,12 @@
 #define INTEGRATOR_H
 
 #include "xyzio.h"
+#include "forcefield.h"
 
 // ---------------------------------------------------------------------
-// Forces and time integration, in reduced units (see reduced_units.md).
-//
-// Potential: Lennard-Jones between every pair, truncated at
-// LJ_CUTOFF * sigma_ij (params.h) and shifted so the energy is zero at
-// the cutoff. Unlike pairs use the Lorentz-Berthelot rules
-//     sigma_ij = (sigma_i + sigma_j) / 2,   eps_ij = sqrt(eps_i * eps_j).
-// Periodic frames use the minimum-image convention.
+// Time integration, in reduced units (see reduced_units.md).
+// The forces come from a ForceField (forcefield.h).
 // ---------------------------------------------------------------------
-
-// Computes all forces and the total potential energy
-// stores them in the frame (add_force, set_potential_energy)
-// Naive O(n^2) loop over pairs j > i; each pair force is added to i and
-// subtracted from j (Newton's third law), so every pair is computed once.
-// throws std::runtime_error when the box is narrower than
-// 2xcutoff or two particles coincide
-void ComputeForces(XYZFrame& f); 
 
 // Advances the frame by one velocity-Verlet step of length dt:
 //     v(t + dt/2) = v(t)        + dt/2 * F(t) / m
@@ -30,8 +18,8 @@ void ComputeForces(XYZFrame& f);
 // so each step costs one force evaluation. With periodic boundaries the
 // positions are wrapped back into the box.
 // Updates f in place.
-// Throws std::invalid_argument for dt<=0;errors from ComputeForces propogate.
-void VelocityVerletStep(XYZFrame& f, double dt);
+// Throws std::invalid_argument for dt<=0; errors from the force field propagate.
+void VelocityVerletStep(XYZFrame& f, const ForceField& ff, double dt);
 
 #endif
 

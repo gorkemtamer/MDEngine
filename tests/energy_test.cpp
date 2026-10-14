@@ -29,13 +29,14 @@ struct EnergyError {
 static EnergyError energy_error(double dt, double t_end) {
     Rng rng(5);                                   // same start for every dt
     XYZFrame f = LatticeFrame(5, 1.2, 1.0, rng);
-    const double E0 = f.KineticEnergy() + PotentialEnergy(f);
+    const ForceField ff = LJForceField();
+    const double E0 = f.KineticEnergy() + PotentialEnergy(f, ff);
     const int steps = static_cast<int>(std::lround(t_end / dt));
 
     double max = 0, sum2 = 0;
     for (int s = 0; s < steps; ++s) {
-        VelocityVerletStep(f, dt);
-        double d = f.KineticEnergy() + PotentialEnergy(f) - E0;
+        VelocityVerletStep(f, ff, dt);
+        double d = f.KineticEnergy() + PotentialEnergy(f, ff) - E0;
         max = std::fmax(max, std::fabs(d));
         sum2 += d * d;
     }

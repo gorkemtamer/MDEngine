@@ -78,10 +78,13 @@ no further compute is needed)
 
 - Further overhaul of write and read functions w.r.t. new XYZFrame class
 - Proper conversion to cpp now works exactly same as the plain c version
-
 - CMake implementation for ctest (finished)
 main_reference and xyzio_test are only once at the moment (for consistency)
-
 - new rng class (from struct to object)
-
 - 4 physics tests and 1 rng test 
+-----------------------------------------------------
+14.10.2026:
+
+- New object `potential` to tidy up the code furthermore
+(main objective: have divided classes for geometry (`XYZFrame`), force fields, and integrators
+for an organized structure)
