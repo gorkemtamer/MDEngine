@@ -33,8 +33,14 @@ Tests:
  In the future will be replaced with more complex examples
  - xyzio_test: checks if xyz_read and xyz_write correctly functions, this will be kept maybe expanded later
  - rng_test: checks the xoshiro256** with a reference, and checks the quality of uniform, normal and Maxwell-Boltzmann distributions by assessing the means and variances. Final check for reproducability
- - force_test: (write explanation) 
- - newton_test: 
+ - force_test: Checks whether the computed forces are the negative gradient of the potential energy by comparing every force component with central difference of the energy for two frames: periodic lattice with small distortions, and an open random frame. One additional test, checks the pair energy of Ar-Kr just to be sure.
+ But this part will be reviewed later in detail in regard of physics, for the moment kept for consistency.
+
+ - newton_test: Checks if the net force is zero and total momentum / angular momentum conservations (only for open boundaries) are valid.
+
+ - energy_test: Checks if the total energy is conserved and halving dt makes the RMS 4 around 4 times smaller (basically checking if the second order accuracy of Velocity-Verlet is correctly implemented, later to be expanded for other possible integrators)
+ - reversibility_test: Checks if the Velocity-Verlet is correctly time-reversible (keep in mind "Loschmidt’s paradox")
+
 
 units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
