@@ -24,6 +24,7 @@ with LJ formula, evaluated independently here.
 #include "measure.h"
 #include "xyzio.h"
 #include "test_helpers.h"
+#include "potentials/harmonic_trap.h"
 
 // component k (0, 1, 2) of a vector
 static double& comp(Vec3& v, int k)       { return k == 0 ? v.x : (k == 1 ? v.y : v.z); }
@@ -97,6 +98,23 @@ int main(){
         double U = PotentialEnergy(pair, ff);
         check(std::fabs(U - expected) < 1e-12 * std::fabs(expected),
               "Ar-Kr pair energy vs. LJ formula (relative error)", std::fabs(U - expected) / std::fabs(expected));
+    
+        // open, LJ + harmonic trap: two potentials adding up in one force field
+        ForceField ff_trap = LJForceField();
+        ff_trap.Add(std::make_unique<HarmonicTrap>(2.0, Vec3{ 3, 3, 3 }));
+        err = max_force_error(o, ff_trap, h);
+        check(err < tol, "open, LJ + trap: max |F_num - F| / max |F|", err);
+
+        // one particle in the trap alone: U = k/2 |r - c|^2, F = -k (r - c)
+        ForceField trap_only;
+        trap_only.Add(std::make_unique<HarmonicTrap>(2.0, Vec3{ 3, 3, 3 }));
+        XYZFrame one(1, Vec3{ 10, 10, 10 }, Boundary::Open);
+        one.set_element(0, element_index("Ar"));
+        one.set_pos(0, Vec3{ 4, 3.5, 1 });             // r - c = (1, 0.5, -2)
+        double U1 = PotentialEnergy(one, trap_only);   // expected 0.5 * 2 * 5.25 = 5.25
+        Vec3 F1 = one.force(0);                        // expected (-2, -1, 4)
+        check(std::fabs(U1 - 5.25) < 1e-14 && norm(F1 - Vec3{ -2, -1, 4 }) < 1e-14,
+              "trap alone: U and F of one particle vs. formula", std::fabs(U1 - 5.25) + norm(F1 - Vec3{ -2, -1, 4 }));    
     } catch(const std::exception& e){
         std::printf("FAIL exception: %s\n", e.what());
         return 1;

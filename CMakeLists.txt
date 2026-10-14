@@ -13,7 +13,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 
 #library, everything in lib/, compiled once and linked
-file(GLOB LIB_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/lib/*.cpp)
+file(GLOB LIB_SOURCES CONFIGURE_DEPENDS
+     ${CMAKE_SOURCE_DIR}/lib/*.cpp
+     ${CMAKE_SOURCE_DIR}/lib/potentials/*.cpp)
 add_library(mdengine STATIC ${LIB_SOURCES})
 target_include_directories(mdengine PUBLIC ${CMAKE_SOURCE_DIR}/lib)
 target_compile_definitions(mdengine PUBLIC 
@@ -61,3 +63,4 @@ add_physics_test(force_test)
 add_physics_test(newton_test)
 add_physics_test(energy_test)
 add_physics_test(reversibility_test)
+add_physics_test(trap_test)

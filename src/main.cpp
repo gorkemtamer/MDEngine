@@ -12,7 +12,7 @@
 #include "checkers.h"
 #include "measure.h"
 #include "forcefield.h"
-#include "lennard_jones.h"
+#include "potentials/lennard_jones.h"
 
 /* Runs n_steps velocity-Verlet steps of length dt on geom, checking the
    minimum distance after every step. Writes the start geometry

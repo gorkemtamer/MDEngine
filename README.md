@@ -34,7 +34,7 @@ Tests:
  - xyzio_test: checks if xyz_read and xyz_write correctly functions, this will be kept maybe expanded later
  - rng_test: checks the xoshiro256** with a reference, and checks the quality of uniform, normal and Maxwell-Boltzmann distributions by assessing the means and variances. Final check for reproducability
  - force_test: Checks whether the computed forces are the negative gradient of the potential energy by comparing every force component with central difference of the energy for two frames: periodic lattice with small distortions, and an open random frame. One additional test, checks the pair energy of Ar-Kr just to be sure.
- But this part will be reviewed later in detail in regard of physics, for the moment kept for consistency.
+ But this part will be reviewed later in detail in regard of physics, for the moment kept for consistency. (Now also checks the LJ+harmonic potential case whether forcefield can really add two potentials together)
 
  - newton_test: Checks if the net force is zero and total momentum / angular momentum conservations (only for open boundaries) are valid.
 
@@ -88,3 +88,4 @@ main_reference and xyzio_test are only once at the moment (for consistency)
 - New object `potential` to tidy up the code furthermore
 (main objective: have divided classes for geometry (`XYZFrame`), force fields, and integrators
 for an organized structure)
+- Harmonic trap potential is added: additional test: trap_test

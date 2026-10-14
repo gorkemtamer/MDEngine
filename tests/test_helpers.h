@@ -12,7 +12,7 @@
 #include <memory>
 #include "xyzio.h"   // LatticeFrame
 #include "forcefield.h"
-#include "lennard_jones.h"
+#include "potentials/lennard_jones.h"
 
 // #failed checks in this test program
 inline int g_failures = 0;
