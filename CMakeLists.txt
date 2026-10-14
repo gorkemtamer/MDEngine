@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)  #-std=c++20
 add_compile_options(-Wall -Wextra -O2)
 
-#executables go to bin/ same structure as before;
+#executables go to build/bin/ same structure as before;
 #output/ must exist
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
@@ -58,6 +58,6 @@ add_reference_test(xyzio_roundtrip xyzio_test xyzio_test.txt)
 
 add_physics_test(rng_test)
 add_physics_test(force_test)
-#add_physics_test(newton_test)
-#add_physics_test(energy_test)
+add_physics_test(newton_test)
+add_physics_test(energy_test)
 #add_physics_test(reversibility_test)
