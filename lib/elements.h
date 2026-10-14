@@ -3,8 +3,8 @@
 
 // ---------------------------------------------------------------------
 // Per-element data in reduced (Lennard-Jones) units with argon as the
-// reference: sigma_Ar = 1, epsilon_Ar = 1, m_Ar = 1
-// (see elements.cpp and reduced_units.md).
+// reference: sigma_Ar = 1, epsilon_Ar = 1, m_Ar = 1; charges in units of e
+// (see units.h, elements.cpp and reduced_units.md).
 //
 // Look a label up once with element_index(), then use element(index):
 //     int k = element_index("Ar");          // -1 if unknown
@@ -25,6 +25,7 @@ struct Element {
     double sigma;   // LJ sigma_i / sigma_Ar
     double eps;     // LJ epsilon_i / epsilon_Ar
     double mass;    // m_i / m_Ar
+    double charge;  // q_i / e (0 for neutral atoms)
 };
 
 // Index of `label` in the element table, or -1 if the label is unknown.

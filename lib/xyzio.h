@@ -23,4 +23,11 @@ void xyz_write(const std::string& path, const XYZFrame& f);
 // Throws std::invalid_argument for n <= 0 or scale <= 0, and
 // std::runtime_error if the box is too small to place all particles.
 XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng);
+
+// A calm starting geometry: k*k*k particles of element `label` on a simple
+// cubic lattice with spacing a (in sigma), in a periodic box of length k*a.
+// Maxwell-Boltzmann velocities at temperature T, center-of-mass velocity
+// removed. Much gentler than RandomFrame.
+// Throws std::invalid_argument for an unknown element.
+XYZFrame LatticeFrame(int k, double a, double T, Rng& rng, const char *label = "Ar");
 #endif
