@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <filesystem>
 #include <format>
 #include <stdexcept>
 #include "xyzio.h"
@@ -10,6 +11,34 @@
 #include "integrator.h"
 #include "checkers.h"
 #include "measure.h"
+
+/* Runs n_steps velocity-Verlet steps of length dt on geom, checking the
+   minimum distance after every step. Writes the start geometry
+   (initialconfig.xyz) and every step (stepNNNN.xyz) into dir, which is
+   created if needed, and prints the energies. 
+   Later to be implemented as the main scheme.
+   */
+static void RunMD(XYZFrame& geom, const std::string& dir, double dt, int n_steps) {
+    std::filesystem::create_directories(dir);
+    xyz_write(dir + "initialconfig.xyz", geom);
+
+    double ekin = geom.KineticEnergy();
+    double epot = PotentialEnergy(geom);
+    printf("%5s %8s %12s %12s %12s\n", "step", "t", "Ekin", "Epot", "Etot");
+    printf("%5d %8.3f %12.6f %12.6f %12.6f\n", 0, 0.0, ekin, epot, ekin + epot);
+
+    for (int step = 1; step <= n_steps; ++step) {
+        /* updates geom in place, so it already is the new geometry */
+        VelocityVerletStep(geom, dt);
+        if (CheckMinDistance(geom) != 0) throw std::runtime_error("minDistance failed at step " + std::to_string(step));
+        geom.comment = std::format("MD step {}, t = {:g}", step, step * dt);
+        xyz_write(dir + std::format("step{:04d}.xyz", step), geom);
+
+        ekin = geom.KineticEnergy();
+        epot = geom.PotentialEnergy();      /* forces are fresh after the step: no recomputation */
+        printf("%5d %8.3f %12.6f %12.6f %12.6f\n", step, step * dt, ekin, epot, ekin + epot);
+    }
+}
 
 int main() {
     try {    
@@ -32,37 +61,29 @@ int main() {
     printf("--------------------------------\n");
     printf("Testing Velocity-Verlet scheme for 100 timesteps\n");
 
-    /* simple MD loop: random initial geometry (open boundaries), then
-       velocity-Verlet steps, checking the geometry and saving every frame */
+    const double dt      = 0.005;  /* time step in tau */
+    const int    n_steps = 1000;
+
+    /* 1. random initial geometry, frames in output/RandomFrame/ */
     const int    n_particles = 20;
     const double box         = 6.0;    /* box edge length in sigma */
-    const double dt          = 0.005;  /* time step in tau */
-    const int    n_steps     = 1000;
-
     Rng md_rng(42);  /* fixed seed: same trajectory every run */
-    
+
     XYZFrame geom = RandomFrame(n_particles, box, Boundary::Periodic, DEFAULT_T, md_rng);
-    xyz_write(OUTPUT_DIR "initialconfig.xyz", geom);
-    xyz_write(INPUT_DIR "initialconfig.xyz", geom);    
-    printf("Initial geometry written to output/ and input/initialconfig.xyz\n");
+    xyz_write(INPUT_DIR "initialconfig.xyz", geom);
+    printf("RandomFrame: %d particles, frames in output/RandomFrame/, "
+           "initial geometry also in input/initialconfig.xyz\n", geom.n());
+    RunMD(geom, std::string(OUTPUT_DIR) + "RandomFrame/", dt, n_steps);
+    printf("--------------------------------\n");
 
-    double ekin = geom.KineticEnergy();
-    double epot = PotentialEnergy(geom);
-    printf("%5s %8s %12s %12s %12s\n", "step", "t", "Ekin", "Epot", "Etot");
-    printf("%5d %8.3f %12.6f %12.6f %12.6f\n", 0, 0.0, ekin, epot, ekin + epot);
+    /* 2. lattice initial geometry (same as in tests/force_test.cpp),
+          frames in output/LatticeFrame/ */
+    Rng lattice_rng(1);  /* fixed seed */
 
-    for (int step = 1; step <= n_steps; ++step) {
-        /* updates geom in place, so it already is the new geometry */
-        VelocityVerletStep(geom, dt);
-        if (CheckMinDistance(geom) != 0) throw std::runtime_error("minDistance failed at step " + std::to_string(step));
-        geom.comment = std::format("MD step {}, t = {:g}", step, step * dt);
-        xyz_write(std::string(OUTPUT_DIR) + std::format("step{:04d}.xyz",step),geom);
-
-        ekin = geom.KineticEnergy();
-        epot = geom.PotentialEnergy();      /* forces are fresh after the step: no recomputation */
-        printf("%5d %8.3f %12.6f %12.6f %12.6f\n", step, step * dt, ekin, epot, ekin + epot);
-    }
-
+    XYZFrame lattice = LatticeFrame(5, 1.2, DEFAULT_T, lattice_rng);
+    printf("LatticeFrame: %d particles on a 5x5x5 simple cubic lattice (spacing 1.2), "
+           "frames in output/LatticeFrame/\n", lattice.n());
+    RunMD(lattice, std::string(OUTPUT_DIR) + "LatticeFrame/", dt, n_steps);
     printf("--------------------------------\n");
     return 0;
     } catch (const std::exception& e) {

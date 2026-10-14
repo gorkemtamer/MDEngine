@@ -148,3 +148,26 @@ XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
 
     return f;
 }
+
+XYZFrame LatticeFrame(int k, double a, double T, Rng& rng, const char *label) {
+    const int el = element_index(label);
+    if (el < 0) throw std::invalid_argument("LatticeFrame: unknown element");
+
+    XYZFrame f(k * k * k, Vec3{ k * a, k * a, k * a }, Boundary::Periodic);
+    int i = 0;
+    for (int ix = 0; ix < k; ++ix)
+        for (int iy = 0; iy < k; ++iy)
+            for (int iz = 0; iz < k; ++iz, ++i) {
+                f.set_element(i, el);
+                f.set_pos(i, Vec3{ (ix + 0.5) * a, (iy + 0.5) * a, (iz + 0.5) * a });
+            }
+
+    for (i = 0; i < f.n(); ++i) {
+        double m = f.mass(i);
+        Vec3 v{ rng.MaxwellBoltzmann(T, m), rng.MaxwellBoltzmann(T, m), rng.MaxwellBoltzmann(T, m) };
+        f.set_vel(i, v);
+    }
+    const Vec3 vcm = f.TotalMomentum() / f.TotalMass();
+    for (i = 0; i < f.n(); ++i) f.set_vel(i, f.vel(i) - vcm);
+    return f;
+}
