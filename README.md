@@ -34,13 +34,14 @@ Tests:
  - xyzio_test: checks if xyz_read and xyz_write correctly functions, this will be kept maybe expanded later
  - rng_test: checks the xoshiro256** with a reference, and checks the quality of uniform, normal and Maxwell-Boltzmann distributions by assessing the means and variances. Final check for reproducability
  - force_test: Checks whether the computed forces are the negative gradient of the potential energy by comparing every force component with central difference of the energy for two frames: periodic lattice with small distortions, and an open random frame. One additional test, checks the pair energy of Ar-Kr just to be sure.
- But this part will be reviewed later in detail in regard of physics, for the moment kept for consistency. (Now also checks the LJ+harmonic potential case whether forcefield can really add two potentials together)
-
- - newton_test: Checks if the net force is zero and total momentum / angular momentum conservations (only for open boundaries) are valid.
-
+ But this part will be reviewed later in detail in regard of physics, for the moment kept for consistency. (Now also checks the LJ+harmonic potential case whether forcefield can really add two potentials together,
+another example with Coulomb+LJ)
+ - newton_test: Checks if the net force is zero and total momentum / angular momentum conservations (only for open boundaries) are valid (additional coulomb case added).
  - energy_test: Checks if the total energy is conserved and halving dt makes the RMS 4 around 4 times smaller (basically checking if the second order accuracy of Velocity-Verlet is correctly implemented, later to be expanded for other possible integrators)
  - reversibility_test: Checks if the Velocity-Verlet is correctly time-reversible (keep in mind "Loschmidt’s paradox")
-
+ - coulomb_test: Checks diatomic (Na-Cl pair) and triatomic (Na-Cl-Ar)
+to see if the method computes correctly, and periodic frames are rejected
+correctly.
 
 units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
@@ -90,3 +91,8 @@ main_reference and xyzio_test are only once at the moment (for consistency)
 for an organized structure)
 - Harmonic trap potential is added: additional test: trap_test
 - Na and Cl added to elements and charges are now registered for future implementation
+-----------------------------------------------------
+16.10.2026: 
+
+- Electrostatic interactions in open boundaries (naive Coulomb) -- additional test for it
+- 

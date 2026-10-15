@@ -25,6 +25,7 @@ with LJ formula, evaluated independently here.
 #include "xyzio.h"
 #include "test_helpers.h"
 #include "potentials/harmonic_trap.h"
+#include "potentials/coulomb.h"
 
 // component k (0, 1, 2) of a vector
 static double& comp(Vec3& v, int k)       { return k == 0 ? v.x : (k == 1 ? v.y : v.z); }
@@ -104,6 +105,16 @@ int main(){
         ff_trap.Add(std::make_unique<HarmonicTrap>(2.0, Vec3{ 3, 3, 3 }));
         err = max_force_error(o, ff_trap, h);
         check(err < tol, "open, LJ + trap: max |F_num - F| / max |F|", err);
+
+        // open, LJ + Coulomb: the random frame turned into Na, Cl, Ar in turn
+        // (10 of each, so the system is neutral)
+        XYZFrame ions = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng);
+        const int ion_el[3] = { element_index("Na"), element_index("Cl"), element_index("Ar") };
+        for (int i = 0; i < ions.n(); ++i) ions.set_element(i, ion_el[i % 3]);
+        ForceField ff_ions = LJForceField();
+        ff_ions.Add(std::make_unique<Coulomb>());
+        err = max_force_error(ions, ff_ions, h);
+        check(err < tol, "open, Na/Cl/Ar, LJ + Coulomb: max |F_num - F| / max |F|", err);
 
         // one particle in the trap alone: U = k/2 |r - c|^2, F = -k (r - c)
         ForceField trap_only;
