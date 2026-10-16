@@ -14,7 +14,6 @@
 #include <stdexcept>
 #include "xyzio.h"
 #include "rng.h"
-#include "measure.h"
 #include "integrators/velocity_verlet.h"
 #include "potentials/wca_wall.h"
 #include "test_helpers.h"
@@ -26,12 +25,12 @@ static double max_energy_error(double dt, double t_end) {
     ForceField ff = LJForceField();
     ff.Add(std::make_unique<WCAWall>());
     VelocityVerlet vv(ff, dt);
-    const double E0 = f.KineticEnergy() + PotentialEnergy(f, ff);
+    const double E0 = f.KineticEnergy() + f.PotentialEnergy(ff);
     const int steps = static_cast<int>(std::lround(t_end / dt));
     double err = 0;
     for (int s = 0; s < steps; ++s) {
         vv.Step(f);
-        err = std::fmax(err, std::fabs(f.KineticEnergy() + f.PotentialEnergy() - E0));
+        err = std::fmax(err, std::fabs(f.KineticEnergy() + f.PotentialEnergy(ff) - E0));
     }
     return err / f.n();
 }
@@ -48,17 +47,17 @@ int main() {
         const double s = 0.5 * one.element(0).sigma;  // 0.644
         const double F0 = 24 * 2.0 / s;                // force at z = s, eps = 2
         one.set_pos(0, Vec3{ s, 3, 3 });
-        double U = PotentialEnergy(one, walls);        // expected eps = 2
+        double U = one.PotentialEnergy(walls);        // expected eps = 2
         Vec3 F = one.force(0);                         // expected F0 in +x
         check(std::fabs(U - 2) < 1e-12 && norm(F - Vec3{ F0, 0, 0 }) < 1e-10,
               "low wall: U and F vs. formula", std::fabs(U - 2) + norm(F - Vec3{ F0, 0, 0 }));
         one.set_pos(0, Vec3{ 3, 6 - s, 3 });
-        U = PotentialEnergy(one, walls);
+        U = one.PotentialEnergy(walls);
         F = one.force(0);
         check(std::fabs(U - 2) < 1e-12 && norm(F - Vec3{ 0, -F0, 0 }) < 1e-10,
               "high wall: U and F vs. formula", std::fabs(U - 2) + norm(F - Vec3{ 0, -F0, 0 }));
         one.set_pos(0, Vec3{ 3, 3, 1.123 * s });      // beyond 2^(1/6) s = 1.1225 s
-        U = PotentialEnergy(one, walls);
+        U = one.PotentialEnergy(walls);
         check(U == 0 && norm(one.force(0)) == 0, "beyond the cutoff: no energy, no force");
 
         // 2. LJ gas bouncing off the walls (T = 2: many wall hits in 5 tau).

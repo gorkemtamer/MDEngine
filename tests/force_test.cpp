@@ -20,7 +20,6 @@ with LJ formula, evaluated independently here.
 #include <exception>
 #include <vector>
 #include "params.h"
-#include "measure.h"
 #include "xyzio.h"
 #include "test_helpers.h"
 #include "potentials/harmonic_trap.h"
@@ -46,8 +45,8 @@ static double max_force_error(XYZFrame& f, const ForceField& ff, double h) {
         const Vec3 r0 = f.pos(i);
         for (int k = 0; k < 3; ++k) {
             Vec3 r = r0;
-            comp(r, k) = comp(r, k) + h;  f.set_pos(i, r);  double up = PotentialEnergy(f, ff);
-            comp(r, k) = comp(r0, k) - h; f.set_pos(i, r);  double um = PotentialEnergy(f, ff);
+            comp(r, k) = comp(r, k) + h;  f.set_pos(i, r);  double up = f.PotentialEnergy(ff);
+            comp(r, k) = comp(r0, k) - h; f.set_pos(i, r);  double um = f.PotentialEnergy(ff);
             f.set_pos(i, r0);
             double f_num = -(up - um) / (2 * h);
             err = std::fmax(err, std::fabs(f_num - comp(F[i], k)));
@@ -96,7 +95,7 @@ int main(){
         pair.set_element(1, element_index("Kr"));
         pair.set_pos(0, Vec3{ 4, 5, 5 });
         pair.set_pos(1, Vec3{ 4 + r, 5, 5 });
-        double U = PotentialEnergy(pair, ff);
+        double U = pair.PotentialEnergy(ff);
         check(std::fabs(U - expected) < 1e-12 * std::fabs(expected),
               "Ar-Kr pair energy vs. LJ formula (relative error)", std::fabs(U - expected) / std::fabs(expected));
     
@@ -132,7 +131,7 @@ int main(){
         XYZFrame one(1, Vec3{ 10, 10, 10 }, Boundary::Open);
         one.set_element(0, element_index("Ar"));
         one.set_pos(0, Vec3{ 4, 3.5, 1 });             // r - c = (1, 0.5, -2)
-        double U1 = PotentialEnergy(one, trap_only);   // expected 0.5 * 2 * 5.25 = 5.25
+        double U1 = one.PotentialEnergy(trap_only);   // expected 0.5 * 2 * 5.25 = 5.25
         Vec3 F1 = one.force(0);                        // expected (-2, -1, 4)
         check(std::fabs(U1 - 5.25) < 1e-14 && norm(F1 - Vec3{ -2, -1, 4 }) < 1e-14,
               "trap alone: U and F of one particle vs. formula", std::fabs(U1 - 5.25) + norm(F1 - Vec3{ -2, -1, 4 }));    

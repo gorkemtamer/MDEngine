@@ -8,7 +8,6 @@
 #include "params.h"
 #include "integrators/velocity_verlet.h"
 #include "checkers.h"
-#include "measure.h"
 #include "forcefield.h"
 #include "elements.h"
 #include "potentials/lennard_jones.h"
@@ -31,7 +30,7 @@ static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir,
 
     const double n_dof = 3.0 * geom.n() - removed_dof;   /* degrees of freedom, as in Bussi */
     double ekin = geom.KineticEnergy();
-    double epot = PotentialEnergy(geom, ff);
+    double epot = geom.PotentialEnergy(ff);
     printf("%6s %8s %8s %12s %12s %12s\n", "step", "t", "T", "Ekin", "Epot", "H");
     printf("%6d %8.3f %8.4f %12.4f %12.4f %12.4f\n", 0, 0.0, 2.0 * ekin / n_dof, ekin, epot, ekin + epot);
 
@@ -43,7 +42,7 @@ static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir,
         geom.comment = std::format("MD step {}, t = {:g}", step, step * dt);
         xyz_write(dir + std::format("step{:05d}.xyz", step), geom);
         ekin = geom.KineticEnergy();
-        epot = geom.PotentialEnergy();
+        epot = geom.PotentialEnergy(ff);
         printf("%6d %8.3f %8.4f %12.4f %12.4f %12.4f\n", step, step * dt, 2.0 * ekin / n_dof, ekin, epot,
                ekin + epot - th.energy_added());
     }

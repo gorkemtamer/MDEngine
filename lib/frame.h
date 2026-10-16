@@ -5,6 +5,7 @@
 #include "boundary.h"
 #include "elements.h"
 
+class ForceField;
 //--------------------------------------------------
 /*
 One snapshot of the system. All per-particle arrays
@@ -38,13 +39,17 @@ public:
     void clear_forces();
     void add_force(int i, Vec3 F) {fx_[i] += F.x; fy_[i] += F.y; fz_[i] += F.z;}
     void set_potential_energy(double U) {epot_= U; forces_valid_ = true;}
-    double PotentialEnergy() const {return epot_;}
     bool forces_valid() const {return forces_valid_;}
     
     std::string comment; //comment in the input file (line 2)
 
     //rest of the physics
     double KineticEnergy() const;
+    // Total potential energy U from the potentials of ff. Returns the stored
+    // value if the forces are up to date (always true right after an integrator
+    // step); otherwise calls ff.Compute first, which also fills the forces.
+    // Errors of the force field propagate.
+    double PotentialEnergy(const ForceField& ff);
     double TotalMass() const;
     Vec3 TotalMomentum() const;
     Vec3 CenterOfMass() const; 

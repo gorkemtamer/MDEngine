@@ -16,7 +16,6 @@
 #include <stdexcept>
 #include "xyzio.h"
 #include "rng.h"
-#include "measure.h"
 #include "integrators/velocity_verlet.h"
 #include "thermostats/bussi.h"
 #include "potentials/wca_wall.h"
@@ -30,7 +29,7 @@ static KStats sample(XYZFrame& f, const ForceField& ff, Bussi& th, double dt, in
     VelocityVerlet vv(ff, dt);
     for (int s = 0; s < n_eq; ++s) { vv.Step(f); th.Apply(f, dt); }
 
-    const double H0 = f.KineticEnergy() + PotentialEnergy(f, ff) - th.energy_added();
+    const double H0 = f.KineticEnergy() + f.PotentialEnergy(ff) - th.energy_added();
     double sum = 0, sum2 = 0, drift = 0;
     for (int s = 0; s < n_steps; ++s) {
         vv.Step(f);
@@ -38,7 +37,7 @@ static KStats sample(XYZFrame& f, const ForceField& ff, Bussi& th, double dt, in
         const double K = f.KineticEnergy();
         sum += K;
         sum2 += K * K;
-        drift = std::fmax(drift, std::fabs(K + f.PotentialEnergy() - th.energy_added() - H0));
+        drift = std::fmax(drift, std::fabs(K + f.PotentialEnergy(ff) - th.energy_added() - H0));
     }
     const double mean = sum / n_steps;
     return { mean, sum2 / n_steps - mean * mean, drift / f.n() };

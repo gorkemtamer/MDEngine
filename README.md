@@ -103,3 +103,17 @@ to avoid unphysical starts)
 - Integrator class for time integrators
 - Thermostat class (first implementation using Bussi) -additional test for it-
 - Implementation of close boundaries in the form of WCA potential
+- Correction to PotentialEnergy() -> a new compact version within XYZFrame
+
+
+
+
+
+
+
+
+
+
+
+
+

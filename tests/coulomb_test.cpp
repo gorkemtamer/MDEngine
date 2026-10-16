@@ -12,7 +12,6 @@
 #include <cmath>
 #include <exception>
 #include <memory>
-#include "measure.h"
 #include "units.h"
 #include "potentials/coulomb.h"
 #include "test_helpers.h"
@@ -35,7 +34,7 @@ int main() {
 
         // 1. one ion pair
         XYZFrame pair = line_frame({ "Na", "Cl" }, { 10, 10 + r });
-        double U = PotentialEnergy(pair, ff);
+        double U = pair.PotentialEnergy(ff);
         double expected = -COULOMB_K / r;
         check(std::fabs(U - expected) < 1e-12 * std::fabs(expected),
               "Na-Cl pair energy vs. -K/r (relative error)", std::fabs(U - expected) / std::fabs(expected));
@@ -46,7 +45,7 @@ int main() {
 
         // 2. a neutral particle in between changes nothing
         XYZFrame three = line_frame({ "Na", "Ar", "Cl" }, { 10, 10 + r / 2, 10 + r });
-        U = PotentialEnergy(three, ff);
+        U = three.PotentialEnergy(ff);
         check(std::fabs(U - expected) < 1e-12 * std::fabs(expected) && norm(three.force(1)) == 0.0,
               "Na, Ar, Cl: Ar neither changes the energy nor feels a force", std::fabs(U - expected) / std::fabs(expected));
 
@@ -55,7 +54,7 @@ int main() {
         ForceField water;
         water.Add(std::make_unique<Coulomb>(eps_r));
         XYZFrame pw = line_frame({ "Na", "Cl" }, { 10, 10 + r });
-        double Uw = PotentialEnergy(pw, water);
+        double Uw = pw.PotentialEnergy(water);
         double errU = std::fabs(Uw * eps_r - expected) / std::fabs(expected);
         double errF = std::fabs(pw.force(0).x * eps_r - Fexp) / Fexp;
         check(std::fmax(errU, errF) < 1e-12, "eps_r = 78.4: energy and force scaled by 1/eps_r", std::fmax(errU, errF));
