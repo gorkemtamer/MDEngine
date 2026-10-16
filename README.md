@@ -104,7 +104,7 @@ to avoid unphysical starts)
 - Thermostat class (first implementation using Bussi) -additional test for it-
 - Implementation of close boundaries in the form of WCA potential
 - Correction to PotentialEnergy() -> a new compact version within XYZFrame
-
+- Steepest descent minimizer (as in GROMACS) for a stand in method for the moment
 
 
 

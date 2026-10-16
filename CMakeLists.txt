@@ -17,7 +17,8 @@ file(GLOB LIB_SOURCES CONFIGURE_DEPENDS
      ${CMAKE_SOURCE_DIR}/lib/*.cpp
      ${CMAKE_SOURCE_DIR}/lib/potentials/*.cpp
      ${CMAKE_SOURCE_DIR}/lib/integrators/*.cpp
-     ${CMAKE_SOURCE_DIR}/lib/thermostats/*.cpp)
+     ${CMAKE_SOURCE_DIR}/lib/thermostats/*.cpp
+     ${CMAKE_SOURCE_DIR}/lib/minimizers/*.cpp)
 add_library(mdengine STATIC ${LIB_SOURCES})
 target_include_directories(mdengine PUBLIC ${CMAKE_SOURCE_DIR}/lib)
 target_compile_definitions(mdengine PUBLIC 
@@ -71,3 +72,4 @@ add_physics_test(trap_test)
 add_physics_test(coulomb_test)
 add_physics_test(thermostat_test)
 add_physics_test(wall_test)
+add_physics_test(minimizer_test)
