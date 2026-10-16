@@ -4,13 +4,19 @@
 #include <stdexcept>
 #include "thermostats/bussi.h"
 
-Bussi::Bussi(double T, double tau, Rng& rng) : Thermostat(T), tau_(tau), rng_(rng) {
+Bussi::Bussi(double T, double tau, Rng& rng, int removed_dof) 
+    : Thermostat(T), 
+      tau_(tau), 
+      rng_(rng),
+      removed_dof_(removed_dof) 
+{
     if (tau < 0) throw std::invalid_argument(std::format("Bussi: tau must be >= 0 (got {:g})", tau));
+    if (removed_dof < 0) throw std::invalid_argument(std::format("Bussi: removed_dof must be >= 0 (got {})", removed_dof));
 }
 
 void Bussi::Apply(XYZFrame& f, double dt) {
-    const int nf = 3 * f.n() - 3;          // degrees of freedom, momentum removed
-    if (nf <= 0) throw std::invalid_argument("Bussi: needs at least 2 particles");
+    const int nf = 3 * f.n() - removed_dof_;      // degrees of freedom
+    if (nf <= 0) throw std::invalid_argument("Bussi: no degrees of freedom left (too few particles)");
     const double K = f.KineticEnergy();
     if (K <= 0) throw std::runtime_error("Bussi: kinetic energy is zero, nothing to rescale");
 

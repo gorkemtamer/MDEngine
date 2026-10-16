@@ -13,23 +13,23 @@
 #include "elements.h"
 #include "potentials/lennard_jones.h"
 #include "potentials/coulomb.h"
+#include "potentials/wca_wall.h"
 #include "thermostats/bussi.h"
 
 /* Same as RunMD in main.cpp, but writes and prints only every `every`-th
    step: Na-Cl needs a small time step, so many steps.
-   Bussi thermostat at DEFAULT_T; prints the temperature T = 2 Ekin / N_f
-   (N_f = 3N - 3, momentum removed) and the conserved H = Ekin + Epot - energy
-   added by the thermostat.
+   (N_f = 3N - removed_dof: 3 if the momentum is conserved, 0 with walls)
+   and the conserved H = Ekin + Epot - energy added by the thermostat.
    TODO: merge with main.cpp's RunMD (Phase 8, Simulation class). */
 static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir,
-                  double dt, int n_steps, int every) {
+                  double dt, int n_steps, int every, int removed_dof) {
     std::filesystem::create_directories(dir);
     xyz_write(dir + "initialconfig.xyz", geom);
     VelocityVerlet vv(ff, dt);
     Rng th_rng(11);
-    Bussi th(DEFAULT_T, 0.1, th_rng);
+    Bussi th(DEFAULT_T, 0.1, th_rng, removed_dof);
 
-    const double n_dof = 3.0 * geom.n() - 3.0;   /* degrees of freedom, as in Bussi */
+    const double n_dof = 3.0 * geom.n() - removed_dof;   /* degrees of freedom, as in Bussi */
     double ekin = geom.KineticEnergy();
     double epot = PotentialEnergy(geom, ff);
     printf("%6s %8s %8s %12s %12s %12s\n", "step", "t", "T", "Ekin", "Epot", "H");
@@ -92,7 +92,7 @@ int main() {
     const int na = element_index("Na"), cl = element_index("Cl");
     for (int i = 0; i < geom.n(); ++i) geom.set_element(i, i % 2 == 0 ? na : cl);
     printf("NaClRandom: %d ions, frames in output/NaClRandom/\n", geom.n());
-    RunMD(geom, ff, std::string(OUTPUT_DIR) + "NaClRandom/", dt, n_steps, every);
+    RunMD(geom, ff, std::string(OUTPUT_DIR) + "NaClRandom/", dt, n_steps, every, 3);
     printf("--------------------------------\n");
 
     /* 2. rock-salt crystal 5x5x4 = 100 ions (50 Na, 50 Cl), a = 0.8 sigma
@@ -100,8 +100,22 @@ int main() {
     Rng lattice_rng(1);  /* fixed seed */
     XYZFrame crystal = RockSaltFrame(5, 5, 4, 0.8, DEFAULT_T, lattice_rng);
     printf("NaClLattice: %d ions, frames in output/NaClLattice/\n", crystal.n());
-    RunMD(crystal, ff, std::string(OUTPUT_DIR) + "NaClLattice/", dt, n_steps, every);
+    RunMD(crystal, ff, std::string(OUTPUT_DIR) + "NaClLattice/", dt, n_steps, every, 3);
     printf("--------------------------------\n");
+
+    /* 3. closed box: random start as in 1., inside WCA walls (the faces of
+          the 10x10x10 box), placed at least 0.75 from the walls (beyond the
+          wall cutoff 0.72 of Cl); frames in output/NaClBox/ */
+    ForceField ff_box;
+    ff_box.Add(std::make_unique<LennardJones>());
+    ff_box.Add(std::make_unique<Coulomb>());
+    ff_box.Add(std::make_unique<WCAWall>());
+    Rng box_rng(42);  /* fixed seed */
+    XYZFrame boxed = RandomFrame(100, 10.0, Boundary::Open, DEFAULT_T, box_rng, 0.75);
+    for (int i = 0; i < boxed.n(); ++i) boxed.set_element(i, i % 2 == 0 ? na : cl);
+    printf("NaClBox: %d ions in a walled box, frames in output/NaClBox/\n", boxed.n());
+    RunMD(boxed, ff_box, std::string(OUTPUT_DIR) + "NaClBox/", dt, n_steps, every, 0);  /* walls: N_f = 3N */
+
     return 0;
     } catch (const std::exception& e) {
         std::fprintf(stderr, "error: %s\n", e.what());

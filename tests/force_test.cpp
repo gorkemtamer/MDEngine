@@ -25,6 +25,7 @@ with LJ formula, evaluated independently here.
 #include "test_helpers.h"
 #include "potentials/harmonic_trap.h"
 #include "potentials/coulomb.h"
+#include "potentials/wca_wall.h"
 
 // component k (0, 1, 2) of a vector
 static double& comp(Vec3& v, int k)       { return k == 0 ? v.x : (k == 1 ? v.y : v.z); }
@@ -114,6 +115,16 @@ int main(){
         ff_ions.Add(std::make_unique<Coulomb>());
         err = max_force_error(ions, ff_ions, h);
         check(err < tol, "open, Na/Cl/Ar, LJ + Coulomb: max |F_num - F| / max |F|", err);
+
+        // open, LJ + WCA walls: Ar, Na, Cl in turn, placed at least 0.3 from
+        // the walls, so that many of them feel a wall (cutoff 0.36 - 0.72)
+        XYZFrame w = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng, 0.3);
+        const int wall_el[3] = { element_index("Ar"), element_index("Na"), element_index("Cl") };
+        for (int i = 0; i < w.n(); ++i) w.set_element(i, wall_el[i % 3]);
+        ForceField ff_wall = LJForceField();
+        ff_wall.Add(std::make_unique<WCAWall>());
+        err = max_force_error(w, ff_wall, h);
+        check(err < tol, "open, Ar/Na/Cl, LJ + walls: max |F_num - F| / max |F|", err);
 
         // one particle in the trap alone: U = k/2 |r - c|^2, F = -k (r - c)
         ForceField trap_only;

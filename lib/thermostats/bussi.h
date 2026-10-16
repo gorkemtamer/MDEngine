@@ -14,23 +14,27 @@
 // tau -> infinity: plain NVE.  tau = 0: new canonical K every step.
 // Typical: tau ~ 0.1 (some 20-100 steps).
 //
-// N_f = 3N - 3: the frames start with zero total momentum, and a common
-// scaling factor keeps it zero.
-// The thermostat does not own the random generator, it only refers to it:
+// Degrees of freedom N_f = 3N - removed_dof:
+//   removed_dof = 3 (default): total momentum conserved and zero (free or
+//                 interacting particles without external forces)
+//   removed_dof = 0: external forces (WCAWall, HarmonicTrap) change the
+//                 total momentum, so all 3N velocity components are free
 // rng must live at least as long as the thermostat.
 // ---------------------------------------------------------------------
 class Bussi : public Thermostat {
 public:
     // Throws std::invalid_argument for T <= 0 or tau < 0.
-    Bussi(double T, double tau, Rng& rng);
+    Bussi(double T, double tau, Rng& rng, int removed_dof = 3);
     // Forbids a temporary generator, e.g. Bussi(T, tau, Rng(1)).
-    Bussi(double, double, Rng&&) = delete;
+    Bussi(double, double, Rng&&, int = 3) = delete;
 
     void Apply(XYZFrame& f, double dt) override;
 
     double tau() const { return tau_; }
+    int removed_dof() const {return removed_dof_;}
 
 private:
     double tau_;
     Rng& rng_;
+    int removed_dof_;
 };

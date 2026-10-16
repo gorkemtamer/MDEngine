@@ -7,7 +7,9 @@
 //      Only 8 particles, so N_f = 21 differs clearly from 3N = 24.
 //   2. Lennard-Jones lattice: mean of K, and H = K + U - energy_added()
 //      is conserved (the thermostat's bookkeeping is right)
-//   3. bad parameters are rejected
+//   3. free particles in a walled box: N_f = 3N (removed_dof = 0), since
+//      the walls change the total momentum
+//   4. bad parameters are rejected
 
 #include <cmath>
 #include <exception>
@@ -17,6 +19,7 @@
 #include "measure.h"
 #include "integrators/velocity_verlet.h"
 #include "thermostats/bussi.h"
+#include "potentials/wca_wall.h"
 #include "test_helpers.h"
 
 struct KStats { double mean, var, drift; };
@@ -64,13 +67,27 @@ int main() {
         check(std::fabs(s.mean / (0.5 * nf * T) - 1) < 0.03, "LJ: <K> / (N_f T/2), expected 1", s.mean / (0.5 * nf * T));
         check(s.drift < 1e-2, "LJ: max |H - H0| per particle, H = K + U - added", s.drift);
 
-        // 3. bad parameters
+        // 3. free particles in a walled box: the walls change the total
+        //    momentum, so N_f = 3N (removed_dof = 0)
+        XYZFrame b = RandomFrame(8, 3.0, Boundary::Open, 0.5, rng, 0.6);
+        nf = 3.0 * b.n();
+        ForceField walls;
+        walls.Add(std::make_unique<WCAWall>());
+        Bussi th_box(T, tau, rng, 0);
+        s = sample(b, walls, th_box, dt, 1000, 200000);
+        check(std::fabs(s.mean / (0.5 * nf * T) - 1) < 0.02, "walls: <K> / (3N T/2), expected 1", s.mean / (0.5 * nf * T));
+        check(std::fabs(s.var / (0.5 * nf * T * T) - 1) < 0.1, "walls: var(K) / (3N T^2/2), expected 1", s.var / (0.5 * nf * T * T));
+
+        // 4. bad parameters
         bool thrown = false;
         try { Bussi bad(0.0, tau, rng); } catch (const std::invalid_argument&) { thrown = true; }
         check(thrown, "T = 0 is rejected");
         thrown = false;
         try { Bussi bad(T, -1.0, rng); } catch (const std::invalid_argument&) { thrown = true; }
         check(thrown, "tau < 0 is rejected");
+        thrown = false;
+        try { Bussi bad(T, tau, rng, -1); } catch (const std::invalid_argument&) { thrown = true; }
+        check(thrown, "removed_dof < 0 is rejected");
     } catch (const std::exception& e) {
         std::printf("FAIL  exception: %s\n", e.what());
         return 1;

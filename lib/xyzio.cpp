@@ -107,10 +107,12 @@ void xyz_write(const std::string& path, const XYZFrame& f){
 // Throws std::invalid_argument for n <= 0 or scale <= 0, std::runtime_error
 // if the box is too small for n particles.
 // ---------------------------------------------------------------------
-XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
+XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng, double margin) {
     if (n <= 0 || scale <= 0)
         throw std::invalid_argument(std::format("RandomFrame: need n > 0 and scale > 0 (got n={}, scale={:g})", n, scale));
-    
+    if (margin < 0 || 2 * margin >= scale)
+        throw std::invalid_argument(std::format("RandomFrame: need 0 <= margin < scale/2 (got margin={:g})", margin));
+
     // 1 1 1 box, scaled 
     XYZFrame f(n, Vec3{scale,scale,scale},bc);
 
@@ -127,7 +129,8 @@ XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
         do {
             if(++tries > max_tries) 
                 throw std::runtime_error(std::format("RandomFrame: could not place particle {} after {} tries, box too small for n={} (increase scale)", i, max_tries, n));
-            Vec3 r{ scale*rng.uniform(), scale*rng.uniform(), scale*rng.uniform()};
+            const double w = scale - 2 * margin;     // width of the region the particles are placed in
+            Vec3 r{ margin + w*rng.uniform(), margin + w*rng.uniform(), margin + w*rng.uniform()};
             f.set_pos(i, r);
         } while (TooCloseToEarlier(f,i));
     }

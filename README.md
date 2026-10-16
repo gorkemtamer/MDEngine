@@ -43,6 +43,7 @@ another example with Coulomb+LJ)
 to see if the method computes correctly, and periodic frames are rejected
 correctly.
  - thermostat_test: Checks whether the Bussi thermostat sample the canonical ensemble.
+ - wall_test: ...
 
 units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
@@ -101,3 +102,4 @@ to avoid unphysical starts)
 - example in src/ for NaCl
 - Integrator class for time integrators
 - Thermostat class (first implementation using Bussi) -additional test for it-
+- Implementation of close boundaries in the form of WCA potential
