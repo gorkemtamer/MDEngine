@@ -16,7 +16,7 @@
 #include <cmath>
 #include <exception>
 #include <vector>
-#include "integrator.h"
+#include "integrators/velocity_verlet.h"
 #include "xyzio.h"
 #include "test_helpers.h"
 
@@ -27,6 +27,7 @@ struct ReturnError {
 
 // N steps forward, flip velocities, N steps forward.
 static ReturnError run_and_return(XYZFrame& f, const ForceField& ff, double dt, int steps) {
+    VelocityVerlet vv(ff, dt);
     const int n = f.n();
     std::vector<Vec3> r0(n), v0(n);
     for (int i = 0; i < n; ++i) {
@@ -34,9 +35,9 @@ static ReturnError run_and_return(XYZFrame& f, const ForceField& ff, double dt, 
         v0[i] = f.vel(i);
     }
 
-    for (int s = 0; s < steps; ++s) VelocityVerletStep(f, ff, dt);
+    for (int s = 0; s < steps; ++s) vv.Step(f);
     for (int i = 0; i < n; ++i) f.set_vel(i, -f.vel(i));
-    for (int s = 0; s < steps; ++s) VelocityVerletStep(f, ff, dt);
+    for (int s = 0; s < steps; ++s) vv.Step(f);
 
     ReturnError e{ 0, 0 };
     for (int i = 0; i < n; ++i) {

@@ -25,7 +25,7 @@ public:
     // std::runtime_error if the force field contains Coulomb but no
     // short-range repulsion (LennardJones). Such a system collapses:
     // opposite charges fall into each other and the integrator ejects them.
-    // Called by VelocityVerletStep: evaluating energies and forces of a
+    // Called by VelocityVerlet::Step: evaluating energies and forces of a
     // fixed configuration with Coulomb alone is still allowed.
     void CheckNotCollapsing() const;
 

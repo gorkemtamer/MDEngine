@@ -15,7 +15,8 @@ file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 #library, everything in lib/, compiled once and linked
 file(GLOB LIB_SOURCES CONFIGURE_DEPENDS
      ${CMAKE_SOURCE_DIR}/lib/*.cpp
-     ${CMAKE_SOURCE_DIR}/lib/potentials/*.cpp)
+     ${CMAKE_SOURCE_DIR}/lib/potentials/*.cpp
+     ${CMAKE_SOURCE_DIR}/lib/integrators/*.cpp)
 add_library(mdengine STATIC ${LIB_SOURCES})
 target_include_directories(mdengine PUBLIC ${CMAKE_SOURCE_DIR}/lib)
 target_compile_definitions(mdengine PUBLIC 

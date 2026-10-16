@@ -8,7 +8,7 @@
 #include "rng.h"
 #include "paths.h"
 #include "params.h"
-#include "integrator.h"
+#include "integrators/velocity_verlet.h"
 #include "checkers.h"
 #include "measure.h"
 #include "forcefield.h"
@@ -23,6 +23,7 @@
 static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir, double dt, int n_steps) {
     std::filesystem::create_directories(dir);
     xyz_write(dir + "initialconfig.xyz", geom);
+    VelocityVerlet vv(ff, dt);
 
     double ekin = geom.KineticEnergy();
     double epot = PotentialEnergy(geom, ff);
@@ -31,7 +32,7 @@ static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir, 
 
     for (int step = 1; step <= n_steps; ++step) {
         /* updates geom in place, so it already is the new geometry */
-        VelocityVerletStep(geom, ff, dt);
+        vv.Step(geom);
         if (CheckMinDistance(geom) != 0) throw std::runtime_error("minDistance failed at step " + std::to_string(step));
         geom.comment = std::format("MD step {}, t = {:g}", step, step * dt);
         xyz_write(dir + std::format("step{:04d}.xyz", step), geom);

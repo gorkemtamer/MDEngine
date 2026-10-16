@@ -13,7 +13,7 @@
 // Total potential energy U of the frame from all potentials of the force
 // field ff (the same ones that give the forces).
 // Uses f.PotentialEnergy() if the forces are up to date (f.forces_valid()),
-// which is always the case right after a VelocityVerletStep; otherwise it calls
+// which is always the case right after an integrator step; otherwise it calls
 // ff.Compute first, so f's forces are filled as a side effect.
 // Errors of the force field propagate.
 double PotentialEnergy(XYZFrame& f, const ForceField& ff);

@@ -15,7 +15,7 @@
 
 #include <cmath>
 #include <exception>
-#include "integrator.h"
+#include "integrators/velocity_verlet.h"
 #include "measure.h"
 #include "xyzio.h"
 #include "test_helpers.h"
@@ -33,9 +33,10 @@ static EnergyError energy_error(double dt, double t_end) {
     const double E0 = f.KineticEnergy() + PotentialEnergy(f, ff);
     const int steps = static_cast<int>(std::lround(t_end / dt));
 
+    VelocityVerlet vv(ff, dt);
     double max = 0, sum2 = 0;
     for (int s = 0; s < steps; ++s) {
-        VelocityVerletStep(f, ff, dt);
+        vv.Step(f);
         double d = f.KineticEnergy() + PotentialEnergy(f, ff) - E0;
         max = std::fmax(max, std::fabs(d));
         sum2 += d * d;

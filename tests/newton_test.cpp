@@ -14,7 +14,7 @@
 
 #include <cmath>
 #include <exception>
-#include "integrator.h"
+#include "integrators/velocity_verlet.h"
 #include "xyzio.h"
 #include "test_helpers.h"
 #include "potentials/coulomb.h"
@@ -58,6 +58,7 @@ int main() {
         const double dt = 0.005;
         const int steps = 500;
         const ForceField ff = LJForceField();
+        VelocityVerlet vv(ff, dt);
         Rng rng(3);
         // perturbed lattice with Ar, Kr, Ne (as in force_test)
         XYZFrame p = LatticeFrame(5, 1.2, 1., rng);
@@ -72,7 +73,7 @@ int main() {
                 Vec3 P0 = p.TotalMomentum();
         double dP = 0, scale = momentum_scale(p);
         for (int s = 0; s < steps; ++s) {
-            VelocityVerletStep(p, ff, dt);
+            vv.Step(p);
             dP = std::fmax(dP, norm(p.TotalMomentum() - P0));
         }
         check(dP / scale < 1e-12, "periodic: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
@@ -89,7 +90,7 @@ int main() {
         scale = momentum_scale(o);
         double lscale = angular_scale(o);
         for (int s = 0; s < steps; ++s) {
-            VelocityVerletStep(o, ff, dt);
+            vv.Step(o);
             dP = std::fmax(dP, norm(o.TotalMomentum() - P0));
             dL = std::fmax(dL, norm(angular_momentum(o) - L0));
         }
@@ -104,6 +105,7 @@ int main() {
         for (int i = 0; i < c.n(); ++i) c.set_element(i, ion_el[i % 3]);
         ForceField ff_ions = LJForceField();
         ff_ions.Add(std::make_unique<Coulomb>());
+        VelocityVerlet vv_ions(ff_ions, dt / 10);
 
         err = force_sum_error(c, ff_ions);
         check(err < 1e-12, "open, ions: |sum F| / sum |F|", err);
@@ -114,7 +116,7 @@ int main() {
         scale = momentum_scale(c);
         lscale = angular_scale(c);
         for (int s = 0; s < steps; ++s) {
-            VelocityVerletStep(c, ff_ions, dt / 10);
+            vv_ions.Step(c);
             dP = std::fmax(dP, norm(c.TotalMomentum() - P0));
             dL = std::fmax(dL, norm(angular_momentum(c) - L0));
         }

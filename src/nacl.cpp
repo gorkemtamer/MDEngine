@@ -6,7 +6,7 @@
 #include "rng.h"
 #include "paths.h"
 #include "params.h"
-#include "integrator.h"
+#include "integrators/velocity_verlet.h"
 #include "checkers.h"
 #include "measure.h"
 #include "forcefield.h"
@@ -21,6 +21,7 @@ static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir,
                   double dt, int n_steps, int every) {
     std::filesystem::create_directories(dir);
     xyz_write(dir + "initialconfig.xyz", geom);
+    VelocityVerlet vv(ff, dt);
 
     double ekin = geom.KineticEnergy();
     double epot = PotentialEnergy(geom, ff);
@@ -28,7 +29,7 @@ static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir,
     printf("%6d %8.3f %12.4f %12.4f %12.4f\n", 0, 0.0, ekin, epot, ekin + epot);
 
     for (int step = 1; step <= n_steps; ++step) {
-        VelocityVerletStep(geom, ff, dt);
+        vv.Step(geom);
         if (CheckMinDistance(geom) != 0) throw std::runtime_error("minDistance failed at step " + std::to_string(step));
         if (step % every != 0) continue;
 

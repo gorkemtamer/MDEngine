@@ -13,7 +13,7 @@
 #include <exception>
 #include <memory>
 #include <numbers>
-#include "integrator.h"
+#include "integrators/velocity_verlet.h"
 #include "xyzio.h"
 #include "potentials/harmonic_trap.h"
 #include "test_helpers.h"
@@ -31,9 +31,10 @@ static double max_position_error(double dt, double k, double A) {
     const double period = 2 * std::numbers::pi / omega;
     const int steps = static_cast<int>(std::lround(period / dt));
 
+    VelocityVerlet vv(ff, dt);
     double err = 0;
     for (int s = 1; s <= steps; ++s) {
-        VelocityVerletStep(f, ff, dt);
+        vv.Step(f);
         double exact = A * std::cos(omega * s * dt);
         err = std::fmax(err, std::fabs((f.pos(0).x - 5) - exact));
     }

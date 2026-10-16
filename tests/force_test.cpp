@@ -19,7 +19,6 @@ with LJ formula, evaluated independently here.
 #include <cmath>
 #include <exception>
 #include <vector>
-#include "integrator.h"
 #include "params.h"
 #include "measure.h"
 #include "xyzio.h"

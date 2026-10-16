@@ -98,3 +98,4 @@ for an organized structure)
 - temporary check for only coulomb systems to avoid "collapses" (futurework
 to avoid unphysical starts)
 - example in src/ for NaCl
+- Integrator class for time integrators

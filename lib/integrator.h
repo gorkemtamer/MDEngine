@@ -1,30 +1,44 @@
-#ifndef INTEGRATOR_H
-#define INTEGRATOR_H
-
-#include "xyzio.h"
+#pragma once
+#include "frame.h"
 #include "forcefield.h"
 
 // ---------------------------------------------------------------------
-// Time integration, in reduced units (see reduced_units.md).
-// The forces come from a ForceField (forcefield.h).
+// Interface for time integrators, in reduced units (see reduced_units.md).
+// An integrator advances a frame by one time step dt, with the forces
+// from a ForceField. Implementations live in lib/integrators/, e.g.
+//     VelocityVerlet vv(ff, 0.005);
+//     for (...) vv.Step(frame);
+//
+// The integrator does not own the force field, it only refers to it:
+// ff must live at least as long as the integrator.
+// Same design as the Potential class
 // ---------------------------------------------------------------------
 
-// Advances the frame by one velocity-Verlet step of length dt:
-//     v(t + dt/2) = v(t)        + dt/2 * F(t) / m
-//     r(t + dt)   = r(t)        + dt   * v(t + dt/2)
-//     F(t + dt)   = forces at the new positions
-//     v(t + dt)   = v(t + dt/2) + dt/2 * F(t + dt) / m
-// F(t) is reused from the previous step when f.forces_valid() is true,
-// so each step costs one force evaluation. With periodic boundaries the
-// positions are wrapped back into the box.
-// Updates f in place.
-// Throws std::invalid_argument for dt<=0; errors from the force field propagate.
-void VelocityVerletStep(XYZFrame& f, const ForceField& ff, double dt);
+class Integrator {
+public:
+    //Throw std::invalid_argument for dt <= 0.
+    Integrator(const ForceField& ff, double dt);
+    
+    // Forbids a temporary force field, e.g. VelocityVerlet(LJForceField(), dt):
+    // it would be destroyed at the end of the line and leave ff_ dangling.   
+    Integrator(ForceField&&, double) = delete;
+    virtual ~Integrator() = default;
 
-#endif
+    //Advances f by one time step, in place. Not const:
+    //integrators may keep a state between steps (e.g. earlier accelerations,
+    //a random generator).
+    //Errors from the force field propogate.
+    virtual void Step(XYZFrame& f) = 0;
 
-#ifdef INTEGRATOR_TEST
+    // Order p of the method: the global error scales like dt^p, so halving
+    // dt makes it 2^p times smaller (4 for velocity-Verlet).
+    virtual int order() const = 0;
 
+    double dt() const {return dt_;}
+    const ForceField& force_field() const { return ff_;}
 
+protected:
+    const ForceField& ff_;
+    double dt_;
+};
 
-#endif
