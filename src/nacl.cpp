@@ -10,6 +10,7 @@
 #include "checkers.h"
 #include "forcefield.h"
 #include "elements.h"
+#include "velocities.h"
 #include "potentials/lennard_jones.h"
 #include "potentials/coulomb.h"
 #include "potentials/wca_wall.h"
@@ -64,12 +65,7 @@ static XYZFrame RockSaltFrame(int nx, int ny, int nz, double a, double T, Rng& r
                 f.set_pos(i, Vec3{ (ix + 0.5) * a, (iy + 0.5) * a, (iz + 0.5) * a });
             }
 
-    for (i = 0; i < f.n(); ++i) {
-        double m = f.mass(i);
-        f.set_vel(i, Vec3{ rng.MaxwellBoltzmann(T, m), rng.MaxwellBoltzmann(T, m), rng.MaxwellBoltzmann(T, m) });
-    }
-    const Vec3 vcm = f.TotalMomentum() / f.TotalMass();
-    for (i = 0; i < f.n(); ++i) f.set_vel(i, f.vel(i) - vcm);
+    AssignVelocities(f, T, rng);
     return f;
 }
 

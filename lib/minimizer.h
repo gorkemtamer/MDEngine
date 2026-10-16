@@ -11,7 +11,7 @@ energy U of a ForceField until the largest force is below force_tol
 Implementations live in lib/minimizers/
     SteepestDescent sd(ff, 1e-4, 10000);
     MinimizeResult r = sd.Minimize(frame);
-    if (!converged) ...
+    if (!r.converged) ...
 The minimizer does not own the force field, it only refers to it:
 ff must live at least as long as the minimizer.
 Same design as the Integrator class.
@@ -51,5 +51,6 @@ protected:
     int max_steps_;
 };
 
+// Largest |F_i| of f; the forces must be up to date.
 double MaxForce(const XYZFrame& f);
 
