@@ -13,23 +13,30 @@
 #include "elements.h"
 #include "potentials/lennard_jones.h"
 #include "potentials/coulomb.h"
+#include "thermostats/bussi.h"
 
 /* Same as RunMD in main.cpp, but writes and prints only every `every`-th
    step: Na-Cl needs a small time step, so many steps.
-   TODO: merge with main.cpp's RunMD (Phase 6, VelocityVerlet class). */
+   Bussi thermostat at DEFAULT_T; prints the temperature T = 2 Ekin / N_f
+   (N_f = 3N - 3, momentum removed) and the conserved H = Ekin + Epot - energy
+   added by the thermostat.
+   TODO: merge with main.cpp's RunMD (Phase 8, Simulation class). */
 static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir,
                   double dt, int n_steps, int every) {
     std::filesystem::create_directories(dir);
     xyz_write(dir + "initialconfig.xyz", geom);
     VelocityVerlet vv(ff, dt);
+    Rng th_rng(11);
+    Bussi th(DEFAULT_T, 0.1, th_rng);
 
+    const double n_dof = 3.0 * geom.n() - 3.0;   /* degrees of freedom, as in Bussi */
     double ekin = geom.KineticEnergy();
     double epot = PotentialEnergy(geom, ff);
-    printf("%6s %8s %12s %12s %12s\n", "step", "t", "Ekin", "Epot", "Etot");
-    printf("%6d %8.3f %12.4f %12.4f %12.4f\n", 0, 0.0, ekin, epot, ekin + epot);
+    printf("%6s %8s %8s %12s %12s %12s\n", "step", "t", "T", "Ekin", "Epot", "H");
+    printf("%6d %8.3f %8.4f %12.4f %12.4f %12.4f\n", 0, 0.0, 2.0 * ekin / n_dof, ekin, epot, ekin + epot);
 
     for (int step = 1; step <= n_steps; ++step) {
-        vv.Step(geom);
+        vv.Step(geom); th.Apply(geom,dt);
         if (CheckMinDistance(geom) != 0) throw std::runtime_error("minDistance failed at step " + std::to_string(step));
         if (step % every != 0) continue;
 
@@ -37,7 +44,8 @@ static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir,
         xyz_write(dir + std::format("step{:05d}.xyz", step), geom);
         ekin = geom.KineticEnergy();
         epot = geom.PotentialEnergy();
-        printf("%6d %8.3f %12.4f %12.4f %12.4f\n", step, step * dt, ekin, epot, ekin + epot);
+        printf("%6d %8.3f %8.4f %12.4f %12.4f %12.4f\n", step, step * dt, 2.0 * ekin / n_dof, ekin, epot,
+               ekin + epot - th.energy_added());
     }
 }
 

@@ -42,6 +42,7 @@ another example with Coulomb+LJ)
  - coulomb_test: Checks diatomic (Na-Cl pair) and triatomic (Na-Cl-Ar)
 to see if the method computes correctly, and periodic frames are rejected
 correctly.
+ - thermostat_test: Checks whether the Bussi thermostat sample the canonical ensemble.
 
 units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
@@ -99,3 +100,4 @@ for an organized structure)
 to avoid unphysical starts)
 - example in src/ for NaCl
 - Integrator class for time integrators
+- Thermostat class (first implementation using Bussi) -additional test for it-
