@@ -25,6 +25,8 @@ target_compile_definitions(mdengine PUBLIC
 #programs
 add_executable(main src/main.cpp)
 target_link_libraries(main PRIVATE mdengine)
+add_executable(nacl src/nacl.cpp)
+target_link_libraries(nacl PRIVATE mdengine)
 
 find_package(raylib QUIET)
 if(raylib_FOUND)

@@ -95,4 +95,6 @@ for an organized structure)
 16.10.2026: 
 
 - Electrostatic interactions in open boundaries (naive Coulomb) -- additional test for it
-- 
+- temporary check for only coulomb systems to avoid "collapses" (futurework
+to avoid unphysical starts)
+- example in src/ for NaCl
