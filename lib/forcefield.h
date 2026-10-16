@@ -21,6 +21,14 @@ public:
     // valid). Errors of the potentials propagate.
     void Compute(XYZFrame& f) const;
 
+    // TEMPORARY safety check (see ROADMAP.md, Loose ends): throws
+    // std::runtime_error if the force field contains Coulomb but no
+    // short-range repulsion (LennardJones). Such a system collapses:
+    // opposite charges fall into each other and the integrator ejects them.
+    // Called by VelocityVerletStep: evaluating energies and forces of a
+    // fixed configuration with Coulomb alone is still allowed.
+    void CheckNotCollapsing() const;
+
 private:
     std::vector<std::unique_ptr<Potential>> potentials_;
 };

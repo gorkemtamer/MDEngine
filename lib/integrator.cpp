@@ -9,6 +9,7 @@
 
 void VelocityVerletStep(XYZFrame& f, const ForceField& ff, double dt) {
     if (dt <= 0) throw std::invalid_argument(std::format("VelocityVerletStep: time step must be positive (got {:g})", dt));
+    ff.CheckNotCollapsing();   // TEMPORARY, see forcefield.h
 
     // F(t): only needed on the first step, afterwards it is kept from the previous step
     if (!f.forces_valid()) ff.Compute(f);
