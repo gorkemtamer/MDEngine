@@ -38,7 +38,7 @@ static double max_force_error(XYZFrame& f, const ForceField& ff, double h) {
     double fmax = 0;
     for (int i = 0; i < f.n(); ++i) {
         F[i] = f.force(i);
-        fmax = std::fmax(fmax, std::fmax(std::fabs(F[i].x), std::fmax(std::fabs(F[i].y), std::fabs(F[i].z))));
+        fmax = max_nan(fmax, max_nan(std::fabs(F[i].x), max_nan(std::fabs(F[i].y), std::fabs(F[i].z))));
     }
     double err = 0;
     for (int i = 0; i < f.n(); ++i) {
@@ -49,7 +49,7 @@ static double max_force_error(XYZFrame& f, const ForceField& ff, double h) {
             comp(r, k) = comp(r0, k) - h; f.set_pos(i, r);  double um = f.PotentialEnergy(ff);
             f.set_pos(i, r0);
             double f_num = -(up - um) / (2 * h);
-            err = std::fmax(err, std::fabs(f_num - comp(F[i], k)));
+            err = max_nan(err, std::fabs(f_num - comp(F[i], k)));
         }
     }
     return err / fmax;

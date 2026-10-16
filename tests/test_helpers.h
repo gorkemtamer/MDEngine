@@ -9,6 +9,7 @@
 */
 
 #include <cstdio>
+#include <cmath>
 #include <memory>
 #include "xyzio.h"   // LatticeFrame
 #include "forcefield.h"
@@ -18,8 +19,10 @@
 inline int g_failures = 0;
 
 // Print one line per check: PASS/FAIL, what was checked
-// and the measured value for information
+// and the measured value for information.
+// A NaN value always fails, whatever ok says.
 inline void check(bool ok, const char *what, double value){
+    if (std::isnan(value)) ok = false;
     std::printf("%s %-50s %.6e\n", ok ? "PASS" : "FAIL", what, value);
     if (!ok) ++g_failures;
 }
@@ -28,6 +31,14 @@ inline void check(bool ok, const char *what, double value){
 inline void check(bool ok, const char *what){
     std::printf("%s %s\n", ok ? "PASS" : "FAIL", what);
     if (!ok) ++g_failures;
+}
+
+// Larger of a and b for running maxima of errors, like std::fmax, but NaN
+// if either is NaN. std::fmax(err, NaN) returns err: a NaN error (e.g. from
+// 0/0) would vanish from the maximum and "err < tol" would pass.
+// Use this instead of std::fmax in the tests.
+inline double max_nan(double a, double b){
+    return (std::isnan(a) || std::isnan(b)) ? NAN : std::fmax(a, b);
 }
 
 // Summary line and exit code for main()

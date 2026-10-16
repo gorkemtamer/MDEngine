@@ -68,6 +68,14 @@ Vec3 XYZFrame::CenterOfMass() const {
     return s / TotalMass();
 }
 
+Vec3 XYZFrame::AngularMomentum() const {
+    if (n() == 0) return {};
+    const Vec3 R = CenterOfMass();
+    Vec3 L{};
+    for (int i=0; i<n(); ++i) L += mass(i) * cross(pos(i) - R, vel(i));
+    return L;
+}
+
 Vec3 XYZFrame::MinImage(Vec3 d) const {
     return bc_ == Boundary::Periodic ? min_image(d, box_) : d;
 }

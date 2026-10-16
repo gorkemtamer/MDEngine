@@ -37,7 +37,7 @@ static EnergyError energy_error(double dt, double t_end) {
     for (int s = 0; s < steps; ++s) {
         vv.Step(f);
         double d = f.KineticEnergy() + f.PotentialEnergy(ff) - E0;
-        max = std::fmax(max, std::fabs(d));
+        max = max_nan(max, std::fabs(d));
         sum2 += d * d;
     }
     return { max / f.n(), std::sqrt(sum2 / steps) / f.n() };

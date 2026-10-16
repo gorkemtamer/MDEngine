@@ -21,3 +21,18 @@ void AssignVelocities(XYZFrame& f, double T, Rng& rng);
 // Subtracts the center-of-mass velocity from every particle: the total
 // momentum becomes zero. Nothing happens for an empty frame.
 void RemoveCenterOfMassVelocity(XYZFrame& f);
+
+
+// Removes the rigid rotation about the center of mass R: with
+// L = sum m_i (r_i - R) x v_i and the inertia tensor I about R,
+//     omega = I^-1 L,     v_i -= omega x (r_i - R)
+// afterwards L = 0. The total momentum is not changed (call
+// RemoveCenterOfMassVelocity as well). Both together leave N_f = 3N - 6
+// degrees of freedom, <K> = (3N - 6) T / 2 after AssignVelocities.
+// Linear configurations (all particles on one line, e.g. two particles)
+// can only rotate about the perpendicular axes: omega = L / sum m_i |r_i - R|^2.
+// Only meaningful when L is conserved: open boundaries without walls
+// (a HarmonicTrap conserves L only about its center).
+// Nothing happens for fewer than two particles.
+// Throws std::runtime_error for periodic frames (no angular momentum).
+void RemoveAngularMomentum(XYZFrame& f);

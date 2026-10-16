@@ -37,7 +37,7 @@ static KStats sample(XYZFrame& f, const ForceField& ff, Bussi& th, double dt, in
         const double K = f.KineticEnergy();
         sum += K;
         sum2 += K * K;
-        drift = std::fmax(drift, std::fabs(K + f.PotentialEnergy(ff) - th.energy_added() - H0));
+        drift = max_nan(drift, std::fabs(K + f.PotentialEnergy(ff) - th.energy_added() - H0));
     }
     const double mean = sum / n_steps;
     return { mean, sum2 / n_steps - mean * mean, drift / f.n() };

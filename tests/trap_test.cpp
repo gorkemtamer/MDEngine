@@ -36,7 +36,7 @@ static double max_position_error(double dt, double k, double A) {
     for (int s = 1; s <= steps; ++s) {
         vv.Step(f);
         double exact = A * std::cos(omega * s * dt);
-        err = std::fmax(err, std::fabs((f.pos(0).x - 5) - exact));
+        err = max_nan(err, std::fabs((f.pos(0).x - 5) - exact));
     }
     return err;
 }

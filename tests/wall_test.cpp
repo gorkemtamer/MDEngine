@@ -30,7 +30,7 @@ static double max_energy_error(double dt, double t_end) {
     double err = 0;
     for (int s = 0; s < steps; ++s) {
         vv.Step(f);
-        err = std::fmax(err, std::fabs(f.KineticEnergy() + f.PotentialEnergy(ff) - E0));
+        err = max_nan(err, std::fabs(f.KineticEnergy() + f.PotentialEnergy(ff) - E0));
     }
     return err / f.n();
 }

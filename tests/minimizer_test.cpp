@@ -44,7 +44,7 @@ int main() {
             SteepestDescent sd(ff, tol, 10000);
             MinimizeResult r = sd.Minimize(f);
             double dist = 0;
-            for (int i = 0; i < 3; ++i) dist = std::fmax(dist, norm(f.pos(i) - Vec3{ 5, 5, 5 }));
+            for (int i = 0; i < 3; ++i) dist = max_nan(dist, norm(f.pos(i) - Vec3{ 5, 5, 5 }));
             check(r.converged, "trap: converged (max |F| < tol)", r.max_force);
             check(dist < tol / 2.0, "trap: max distance from the center", dist);   // |F| = k |r - c|
             check(std::fabs(r.energy) < 1e-12, "trap: U at the end, expected 0", r.energy);
@@ -79,7 +79,7 @@ int main() {
             MinimizeResult r = sd.Minimize(f);
             double derr = 0;
             for (int i = 0; i < 4; ++i)
-                for (int j = i + 1; j < 4; ++j) derr = std::fmax(derr, std::fabs(norm(f.pos(j) - f.pos(i)) - rmin_factor));
+                for (int j = i + 1; j < 4; ++j) derr = max_nan(derr, std::fabs(norm(f.pos(j) - f.pos(i)) - rmin_factor));
             const double U_exp = 6 * lj_pair("Ar", "Ar", rmin_factor);
             check(r.converged, "Ar4: converged", r.max_force);
             check(derr < 1e-6, "Ar4: all 6 distances at 2^(1/6), max error", derr);

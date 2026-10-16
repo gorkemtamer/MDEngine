@@ -74,7 +74,7 @@ int main() {
         double dP = 0, scale = momentum_scale(p);
         for (int s = 0; s < steps; ++s) {
             vv.Step(p);
-            dP = std::fmax(dP, norm(p.TotalMomentum() - P0));
+            dP = max_nan(dP, norm(p.TotalMomentum() - P0));
         }
         check(dP / scale < 1e-12, "periodic: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
 
@@ -91,8 +91,8 @@ int main() {
         double lscale = angular_scale(o);
         for (int s = 0; s < steps; ++s) {
             vv.Step(o);
-            dP = std::fmax(dP, norm(o.TotalMomentum() - P0));
-            dL = std::fmax(dL, norm(angular_momentum(o) - L0));
+            dP = max_nan(dP, norm(o.TotalMomentum() - P0));
+            dL = max_nan(dL, norm(angular_momentum(o) - L0));
         }
         check(dP / scale < 1e-12, "open: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
         check(dL / lscale < 1e-12, "open: max |L(t) - L(0)| / sum m|r x v| (500 steps)", dL / lscale);
@@ -117,8 +117,8 @@ int main() {
         lscale = angular_scale(c);
         for (int s = 0; s < steps; ++s) {
             vv_ions.Step(c);
-            dP = std::fmax(dP, norm(c.TotalMomentum() - P0));
-            dL = std::fmax(dL, norm(angular_momentum(c) - L0));
+            dP = max_nan(dP, norm(c.TotalMomentum() - P0));
+            dL = max_nan(dL, norm(angular_momentum(c) - L0));
         }
         check(dP / scale < 1e-12, "open, ions: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
         check(dL / lscale < 1e-12, "open, ions: max |L(t) - L(0)| / sum m|r x v| (500 steps)", dL / lscale);

@@ -57,7 +57,7 @@ int main() {
         double Uw = pw.PotentialEnergy(water);
         double errU = std::fabs(Uw * eps_r - expected) / std::fabs(expected);
         double errF = std::fabs(pw.force(0).x * eps_r - Fexp) / Fexp;
-        check(std::fmax(errU, errF) < 1e-12, "eps_r = 78.4: energy and force scaled by 1/eps_r", std::fmax(errU, errF));
+        check(max_nan(errU, errF) < 1e-12, "eps_r = 78.4: energy and force scaled by 1/eps_r", max_nan(errU, errF));
 
         // 4. periodic frames are rejected
         XYZFrame p(2, Vec3{ 20, 20, 20 }, Boundary::Periodic);

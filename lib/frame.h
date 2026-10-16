@@ -52,7 +52,8 @@ public:
     double PotentialEnergy(const ForceField& ff);
     double TotalMass() const;
     Vec3 TotalMomentum() const;
-    Vec3 CenterOfMass() const; 
+    Vec3 CenterOfMass() const;
+    Vec3 AngularMomentum() const; //sum m_i (r_i - R) x v_i about the center of mass R (open boundaries)  
     Vec3 MinImage(Vec3 d) const; //plain d for OBC, nearest image for PBC
     Vec3 Wrap(Vec3 r) const; //into the box for PBC, nothing for OBC
 
