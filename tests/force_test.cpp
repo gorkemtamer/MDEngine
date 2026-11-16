@@ -19,12 +19,12 @@ with LJ formula, evaluated independently here.
 #include <cmath>
 #include <exception>
 #include <vector>
-#include "integrator.h"
 #include "params.h"
-#include "measure.h"
 #include "xyzio.h"
 #include "test_helpers.h"
 #include "potentials/harmonic_trap.h"
+#include "potentials/coulomb.h"
+#include "potentials/wca_wall.h"
 
 // component k (0, 1, 2) of a vector
 static double& comp(Vec3& v, int k)       { return k == 0 ? v.x : (k == 1 ? v.y : v.z); }
@@ -38,18 +38,18 @@ static double max_force_error(XYZFrame& f, const ForceField& ff, double h) {
     double fmax = 0;
     for (int i = 0; i < f.n(); ++i) {
         F[i] = f.force(i);
-        fmax = std::fmax(fmax, std::fmax(std::fabs(F[i].x), std::fmax(std::fabs(F[i].y), std::fabs(F[i].z))));
+        fmax = max_nan(fmax, max_nan(std::fabs(F[i].x), max_nan(std::fabs(F[i].y), std::fabs(F[i].z))));
     }
     double err = 0;
     for (int i = 0; i < f.n(); ++i) {
         const Vec3 r0 = f.pos(i);
         for (int k = 0; k < 3; ++k) {
             Vec3 r = r0;
-            comp(r, k) = comp(r, k) + h;  f.set_pos(i, r);  double up = PotentialEnergy(f, ff);
-            comp(r, k) = comp(r0, k) - h; f.set_pos(i, r);  double um = PotentialEnergy(f, ff);
+            comp(r, k) = comp(r, k) + h;  f.set_pos(i, r);  double up = f.PotentialEnergy(ff);
+            comp(r, k) = comp(r0, k) - h; f.set_pos(i, r);  double um = f.PotentialEnergy(ff);
             f.set_pos(i, r0);
             double f_num = -(up - um) / (2 * h);
-            err = std::fmax(err, std::fabs(f_num - comp(F[i], k)));
+            err = max_nan(err, std::fabs(f_num - comp(F[i], k)));
         }
     }
     return err / fmax;
@@ -95,7 +95,7 @@ int main(){
         pair.set_element(1, element_index("Kr"));
         pair.set_pos(0, Vec3{ 4, 5, 5 });
         pair.set_pos(1, Vec3{ 4 + r, 5, 5 });
-        double U = PotentialEnergy(pair, ff);
+        double U = pair.PotentialEnergy(ff);
         check(std::fabs(U - expected) < 1e-12 * std::fabs(expected),
               "Ar-Kr pair energy vs. LJ formula (relative error)", std::fabs(U - expected) / std::fabs(expected));
     
@@ -105,13 +105,33 @@ int main(){
         err = max_force_error(o, ff_trap, h);
         check(err < tol, "open, LJ + trap: max |F_num - F| / max |F|", err);
 
+        // open, LJ + Coulomb: the random frame turned into Na, Cl, Ar in turn
+        // (10 of each, so the system is neutral)
+        XYZFrame ions = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng);
+        const int ion_el[3] = { element_index("Na"), element_index("Cl"), element_index("Ar") };
+        for (int i = 0; i < ions.n(); ++i) ions.set_element(i, ion_el[i % 3]);
+        ForceField ff_ions = LJForceField();
+        ff_ions.Add(std::make_unique<Coulomb>());
+        err = max_force_error(ions, ff_ions, h);
+        check(err < tol, "open, Na/Cl/Ar, LJ + Coulomb: max |F_num - F| / max |F|", err);
+
+        // open, LJ + WCA walls: Ar, Na, Cl in turn, placed at least 0.3 from
+        // the walls, so that many of them feel a wall (cutoff 0.36 - 0.72)
+        XYZFrame w = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng, 0.3);
+        const int wall_el[3] = { element_index("Ar"), element_index("Na"), element_index("Cl") };
+        for (int i = 0; i < w.n(); ++i) w.set_element(i, wall_el[i % 3]);
+        ForceField ff_wall = LJForceField();
+        ff_wall.Add(std::make_unique<WCAWall>());
+        err = max_force_error(w, ff_wall, h);
+        check(err < tol, "open, Ar/Na/Cl, LJ + walls: max |F_num - F| / max |F|", err);
+
         // one particle in the trap alone: U = k/2 |r - c|^2, F = -k (r - c)
         ForceField trap_only;
         trap_only.Add(std::make_unique<HarmonicTrap>(2.0, Vec3{ 3, 3, 3 }));
         XYZFrame one(1, Vec3{ 10, 10, 10 }, Boundary::Open);
         one.set_element(0, element_index("Ar"));
         one.set_pos(0, Vec3{ 4, 3.5, 1 });             // r - c = (1, 0.5, -2)
-        double U1 = PotentialEnergy(one, trap_only);   // expected 0.5 * 2 * 5.25 = 5.25
+        double U1 = one.PotentialEnergy(trap_only);   // expected 0.5 * 2 * 5.25 = 5.25
         Vec3 F1 = one.force(0);                        // expected (-2, -1, 4)
         check(std::fabs(U1 - 5.25) < 1e-14 && norm(F1 - Vec3{ -2, -1, 4 }) < 1e-14,
               "trap alone: U and F of one particle vs. formula", std::fabs(U1 - 5.25) + norm(F1 - Vec3{ -2, -1, 4 }));    

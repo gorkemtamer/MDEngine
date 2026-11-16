@@ -15,9 +15,14 @@
 //     d_ij < MIN_DIST_FACTOR * (radius_i + radius_j)
 // ---------------------------------------------------------------------
 
-// Fraction of sigma_ij below which a pair counts as unphysical.
-// At r = 0.8 sigma the LJ energy is already ~ +43 epsilon.
-inline constexpr double MIN_DIST_FACTOR = 0.8;
+// Fraction of sigma_ij below which a pair counts as unphysical (safety check,
+// CheckMinDistance). At r = 0.6 sigma the LJ energy is already ~ +1750 epsilon.
+// Lower than 0.8 since Na+-Cl- sits at ~0.76 sigma_ij (Coulomb pulls it in).
+inline constexpr double MIN_DIST_FACTOR = 0.6;
+
+// Fraction of sigma_ij used when placing particles (TooCloseToEarlier,
+// RandomFrame). Kept at 0.8 so the reference outputs do not change.
+inline constexpr double PLACE_DIST_FACTOR = 0.8;
 
 // One element, already converted to reduced units.
 struct Element {

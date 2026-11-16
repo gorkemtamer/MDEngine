@@ -14,9 +14,10 @@
 
 #include <cmath>
 #include <exception>
-#include "integrator.h"
+#include "integrators/velocity_verlet.h"
 #include "xyzio.h"
 #include "test_helpers.h"
+#include "potentials/coulomb.h"
 
 // |sum_i F_i| / sum_i |F_i|: zero if all forces cancel
 static double force_sum_error(XYZFrame& f, const ForceField& ff) {
@@ -57,6 +58,7 @@ int main() {
         const double dt = 0.005;
         const int steps = 500;
         const ForceField ff = LJForceField();
+        VelocityVerlet vv(ff, dt);
         Rng rng(3);
         // perturbed lattice with Ar, Kr, Ne (as in force_test)
         XYZFrame p = LatticeFrame(5, 1.2, 1., rng);
@@ -71,8 +73,8 @@ int main() {
                 Vec3 P0 = p.TotalMomentum();
         double dP = 0, scale = momentum_scale(p);
         for (int s = 0; s < steps; ++s) {
-            VelocityVerletStep(p, ff, dt);
-            dP = std::fmax(dP, norm(p.TotalMomentum() - P0));
+            vv.Step(p);
+            dP = max_nan(dP, norm(p.TotalMomentum() - P0));
         }
         check(dP / scale < 1e-12, "periodic: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
 
@@ -88,12 +90,39 @@ int main() {
         scale = momentum_scale(o);
         double lscale = angular_scale(o);
         for (int s = 0; s < steps; ++s) {
-            VelocityVerletStep(o, ff, dt);
-            dP = std::fmax(dP, norm(o.TotalMomentum() - P0));
-            dL = std::fmax(dL, norm(angular_momentum(o) - L0));
+            vv.Step(o);
+            dP = max_nan(dP, norm(o.TotalMomentum() - P0));
+            dL = max_nan(dL, norm(angular_momentum(o) - L0));
         }
         check(dP / scale < 1e-12, "open: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
         check(dL / lscale < 1e-12, "open: max |L(t) - L(0)| / sum m|r x v| (500 steps)", dL / lscale);
+    
+        // open, Na/Cl/Ar with LJ + Coulomb: Coulomb forces are central too, so
+        // momentum and angular momentum stay constant. Ions move fast, so a
+        // 10x smaller time step (see reduced_units.md).
+        XYZFrame c = RandomFrame(30, 6.0, Boundary::Open, 1.0, rng);
+        const int ion_el[3] = { element_index("Na"), element_index("Cl"), element_index("Ar") };
+        for (int i = 0; i < c.n(); ++i) c.set_element(i, ion_el[i % 3]);
+        ForceField ff_ions = LJForceField();
+        ff_ions.Add(std::make_unique<Coulomb>());
+        VelocityVerlet vv_ions(ff_ions, dt / 10);
+
+        err = force_sum_error(c, ff_ions);
+        check(err < 1e-12, "open, ions: |sum F| / sum |F|", err);
+
+        P0 = c.TotalMomentum();
+        L0 = angular_momentum(c);
+        dP = dL = 0;
+        scale = momentum_scale(c);
+        lscale = angular_scale(c);
+        for (int s = 0; s < steps; ++s) {
+            vv_ions.Step(c);
+            dP = max_nan(dP, norm(c.TotalMomentum() - P0));
+            dL = max_nan(dL, norm(angular_momentum(c) - L0));
+        }
+        check(dP / scale < 1e-12, "open, ions: max |P(t) - P(0)| / sum m|v| (500 steps)", dP / scale);
+        check(dL / lscale < 1e-12, "open, ions: max |L(t) - L(0)| / sum m|r x v| (500 steps)", dL / lscale);
+    
     }
     catch(const std::exception& e)
     {

@@ -7,18 +7,20 @@
 #include "elements.h"
 #include "vec3.h"
 
+//Checks during geometry generation
 int TooCloseToEarlier(const XYZFrame& f, int i){
     const double ri = 0.5 * f.element(i).sigma;
     for (int j = 0; j < i; ++j){
         double rj = 0.5 * f.element(j).sigma;
         Vec3 d = f.MinImage(f.pos(j) - f.pos(i));
-        double dmin = MIN_DIST_FACTOR * (ri + rj);
+        double dmin = PLACE_DIST_FACTOR * (ri + rj);
         if (norm2(d) < dmin * dmin) return 1;
     }
     return 0;
 }
 
 // Plain O(n^2) loop over all pairs.
+// Checks during simulation
 // TODO: cell lists if n gets large. TRY TO AVOID THIS
 int CheckMinDistance(const XYZFrame& f) {    
     int too_close = 0;

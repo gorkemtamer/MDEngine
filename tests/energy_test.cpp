@@ -15,8 +15,7 @@
 
 #include <cmath>
 #include <exception>
-#include "integrator.h"
-#include "measure.h"
+#include "integrators/velocity_verlet.h"
 #include "xyzio.h"
 #include "test_helpers.h"
 
@@ -30,14 +29,15 @@ static EnergyError energy_error(double dt, double t_end) {
     Rng rng(5);                                   // same start for every dt
     XYZFrame f = LatticeFrame(5, 1.2, 1.0, rng);
     const ForceField ff = LJForceField();
-    const double E0 = f.KineticEnergy() + PotentialEnergy(f, ff);
+    const double E0 = f.KineticEnergy() + f.PotentialEnergy(ff);
     const int steps = static_cast<int>(std::lround(t_end / dt));
 
+    VelocityVerlet vv(ff, dt);
     double max = 0, sum2 = 0;
     for (int s = 0; s < steps; ++s) {
-        VelocityVerletStep(f, ff, dt);
-        double d = f.KineticEnergy() + PotentialEnergy(f, ff) - E0;
-        max = std::fmax(max, std::fabs(d));
+        vv.Step(f);
+        double d = f.KineticEnergy() + f.PotentialEnergy(ff) - E0;
+        max = max_nan(max, std::fabs(d));
         sum2 += d * d;
     }
     return { max / f.n(), std::sqrt(sum2 / steps) / f.n() };

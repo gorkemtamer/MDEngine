@@ -20,14 +20,17 @@ void xyz_write(const std::string& path, const XYZFrame& f);
 //velocities drawn from Maxwell-Boltzmann distribution at T
 //and center-of-mass velocity is removed
 //All particles are 'Ar'
-// Throws std::invalid_argument for n <= 0 or scale <= 0, and
+// Throws std::invalid_argument for n <= 0, scale <= 0 or T < 0 and
 // std::runtime_error if the box is too small to place all particles.
-XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng);
+// margin: particles are placed in [margin, scale - margin) in each direction,
+// e.g. to keep them away from walls (WCAWall); 0 fills the whole box.
+// Throws std::invalid_argument for margin < 0 or 2 * margin >= scale.
+XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng, double margin = 0.0);
 
 // A calm starting geometry: k*k*k particles of element `label` on a simple
 // cubic lattice with spacing a (in sigma), in a periodic box of length k*a.
 // Maxwell-Boltzmann velocities at temperature T, center-of-mass velocity
 // removed. Much gentler than RandomFrame.
-// Throws std::invalid_argument for an unknown element.
+// Throws std::invalid_argument for an unknown element or T < 0.
 XYZFrame LatticeFrame(int k, double a, double T, Rng& rng, const char *label = "Ar");
 #endif

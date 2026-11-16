@@ -38,7 +38,7 @@ int main(){
             double u =rng.uniform();
             sum += u;
             lo = std::fmin(lo,u);
-            hi = std::fmax(hi,u);
+            hi = max_nan(hi,u);
         }
         check(lo>=0.0 && hi < 1., "uniform(): all values in [0,1)");
         check(std::fabs(sum / N - 0.5) < 5 * std::sqrt(1./12 / N),

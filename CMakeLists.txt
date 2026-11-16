@@ -15,7 +15,10 @@ file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 #library, everything in lib/, compiled once and linked
 file(GLOB LIB_SOURCES CONFIGURE_DEPENDS
      ${CMAKE_SOURCE_DIR}/lib/*.cpp
-     ${CMAKE_SOURCE_DIR}/lib/potentials/*.cpp)
+     ${CMAKE_SOURCE_DIR}/lib/potentials/*.cpp
+     ${CMAKE_SOURCE_DIR}/lib/integrators/*.cpp
+     ${CMAKE_SOURCE_DIR}/lib/thermostats/*.cpp
+     ${CMAKE_SOURCE_DIR}/lib/minimizers/*.cpp)
 add_library(mdengine STATIC ${LIB_SOURCES})
 target_include_directories(mdengine PUBLIC ${CMAKE_SOURCE_DIR}/lib)
 target_compile_definitions(mdengine PUBLIC 
@@ -25,6 +28,8 @@ target_compile_definitions(mdengine PUBLIC
 #programs
 add_executable(main src/main.cpp)
 target_link_libraries(main PRIVATE mdengine)
+add_executable(nacl src/nacl.cpp)
+target_link_libraries(nacl PRIVATE mdengine)
 
 find_package(raylib QUIET)
 if(raylib_FOUND)
@@ -64,3 +69,9 @@ add_physics_test(newton_test)
 add_physics_test(energy_test)
 add_physics_test(reversibility_test)
 add_physics_test(trap_test)
+add_physics_test(coulomb_test)
+add_physics_test(thermostat_test)
+add_physics_test(wall_test)
+add_physics_test(minimizer_test)
+add_physics_test(velocity_test)
+add_physics_test(simulation_test)

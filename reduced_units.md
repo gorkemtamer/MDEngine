@@ -80,7 +80,8 @@ Handy numbers:
 | 1 fs | 4.70 × 10⁻⁴ τ | |
 | LJ triple point | T\* ≈ 0.69, liquid ρ\* ≈ 0.85 | ≈ 86 K |
 | LJ critical point | T\* ≈ 1.32, ρ\* ≈ 0.32 | ≈ 164 K |
-| energy at r = 0.8 σ | V ≈ +43 ε | used for `MIN_DIST_FACTOR` |
+| energy at r = 0.8 σ | V ≈ +43 ε | `PLACE_DIST_FACTOR` (placement of random starts) |
+| energy at r = 0.6 σ | V ≈ +1750 ε | `MIN_DIST_FACTOR` (safety check, `CheckMinDistance`) |
 
 The triple and critical points are for the full (untruncated) LJ fluid;
 a cut-off potential shifts them slightly.
@@ -90,8 +91,8 @@ a cut-off potential shifts them slightly.
 σ, ε and mass are written in `lib/elements.cpp` in Å, K and u, and
 converted once, at compile time, to reduced units. `element(element_index(label))`
 returns an `Element` with `.sigma` = σ_i / σ_Ar, `.eps` = ε_i / ε_Ar,
-`.mass` = m_i / m_Ar and `.charge` = q_i / e. For particle i of a frame, `f->element(i)` gives the
-same `Element` and `f->mass(i)` its mass. The particle radius used by the
+`.mass` = m_i / m_Ar and `.charge` = q_i / e. For particle i of a frame, `f.element(i)` gives the
+same `Element` and `f.mass(i)` its mass. The particle radius used by the
 minimum-distance check and the viewer is σ_i / 2.
 
 | Element | σ (Å) | σ\* | radius\* = σ\*/2 | mass (u) | m\* | ε/k_B (K) | ε\* | q (e) |
@@ -136,22 +137,31 @@ Because a particle's radius is σ_i / 2, the sum of two radii is σ_ij.
 | `XYZFrame::pos(i)` and `.xyz` columns 2–4 | positions | σ |
 | `XYZFrame::vel(i)` and `.xyz` columns 5–7 | velocities | σ/τ |
 | `XYZFrame::box()` and `Lattice` line | box lengths | σ |
-| `xyz_random(..., scale, ...)` | box edge length | σ |
-| particle radius `0.5 * f->element(i).sigma` | σ_i / 2 | σ |
+| `RandomFrame(n, scale, bc, T, rng, margin)` | box edge length `scale`, distance to the walls `margin` | σ |
+| particle radius `0.5 * f.element(i).sigma` | σ_i / 2 | σ |
 | `XYZFrame::mass(i)` | m_i | m_Ar |
-| `rng_MaxwellBoltzmann(r, kT, mass)` | kT, mass → velocity component | ε, m_Ar → σ/τ |
-| `MIN_DIST_FACTOR` (= 0.8) | minimum pair distance / σ_ij | dimensionless |
+| `Rng::MaxwellBoltzmann(kT, mass)` | kT, mass → velocity component | ε, m_Ar → σ/τ |
+| `MIN_DIST_FACTOR` in `lib/elements.h` (= 0.6) | safety check: minimum pair distance / σ_ij (`CheckMinDistance`) | dimensionless |
+| `PLACE_DIST_FACTOR` in `lib/elements.h` (= 0.8) | placement: minimum pair distance / σ_ij (`RandomFrame`) | dimensionless |
 | viewer sphere radius | σ_i / 2 | σ |
-| `EPS`, `SIGMA` in `src/main.cpp` | LJ parameters | ε, σ (both 1) |
-| `DEFAULT_T` in `lib/params.h` (= 1.0) | temperature used by `xyz_random` | ε/k_B (1.0 = 124 K) |
-| `LJ_CUTOFF` in `lib/params.h` (= 2.5) | LJ cutoff radius / σ_ij | dimensionless |
+| `DEFAULT_T` in `lib/params.h` (= 1.0) | default start temperature (`main`, `nacl`) | ε/k_B (1.0 = 124 K) |
+| `LJ_CUTOFF` in `lib/params.h` (= 2.5) | LJ cutoff radius / σ_ij (`LennardJones(cutoff)`) | dimensionless |
 | `XYZFrame::force(i)` | forces | ε/σ |
-| `XYZFrame::KineticEnergy()`, `XYZFrame::PotentialEnergy()`, `PotentialEnergy(f)` (`lib/measure.h`) | energies | ε |
+| `XYZFrame::KineticEnergy()`, `XYZFrame::PotentialEnergy(ff)` | energies | ε |
 | `XYZFrame::TotalMomentum()` | total momentum | m_Ar σ/τ |
-| `VelocityVerletStep(f, dt)` | time step | τ (typical 0.005 ≈ 10.6 fs) |
+| `XYZFrame::AngularMomentum()` | angular momentum about the centre of mass | m_Ar σ²/τ |
+| `Simulation::Temperature()` | temperature 2K / N_f | ε/k_B |
+| `VelocityVerlet(ff, dt)`, `MDParams::dt` | time step | τ (typical 0.005 ≈ 10.6 fs; ions ≈ 0.001) |
+| `Bussi(T, tau, ...)`, `MDParams::T`, `MDParams::tau` | target temperature, coupling time | ε/k_B, τ |
+| `MDParams::max_move` (= 0.1) | largest displacement per step | σ |
+| `MinimizeParams::force_tol` | convergence: max \|F_i\| | ε/σ |
+| `MinimizeParams::initial_step`, `max_step` | steepest-descent step length | σ |
+| `Coulomb(eps_r)` | relative permittivity | dimensionless |
+| `HarmonicTrap(k, center)` | spring constant, centre | ε/σ², σ |
+| `WCAWall(eps)` | wall strength | ε |
 | `Element.sigma`, `.eps`, `.mass`, `.charge` (`element(k)`) | σ_i, ε_i, m_i, q_i | σ_Ar, ε_Ar, m_Ar, e |
 | `COULOMB_K` in `lib/units.h` (= 394.26) | Coulomb constant e²/(4πε₀σε) | ε σ / e² |
 
 Example: a Maxwell–Boltzmann velocity for argon at 100 K is
-`rng_MaxwellBoltzmann(&rng, 100.0 / 124.0, element(element_index("Ar")).mass)`,
+`rng.MaxwellBoltzmann(100.0 / 124.0, element(element_index("Ar")).mass)`,
 i.e. kT\* = 0.806 and m\* = 1.

@@ -2,7 +2,7 @@
 #include <cmath>
 #include <stdexcept>
 #include "frame.h"
-
+#include "forcefield.h"
 
 // Simple check for particle count (placeholder)
 static int checked_count(int n){
@@ -44,6 +44,12 @@ double XYZFrame::KineticEnergy() const {
     return ke;
 }
 
+double XYZFrame::PotentialEnergy(const ForceField& ff){
+    //forces and energy come from the same computation
+    if (!forces_valid_) ff.Compute(*this);
+    return epot_;
+}
+
 double XYZFrame::TotalMass() const {
     double m = 0.;
     for (int i=0; i < n(); ++i) m += mass(i);
@@ -60,6 +66,14 @@ Vec3 XYZFrame::CenterOfMass() const {
     Vec3 s{};
     for (int i=0; i<n(); ++i) s += mass(i) * pos(i);
     return s / TotalMass();
+}
+
+Vec3 XYZFrame::AngularMomentum() const {
+    if (n() == 0) return {};
+    const Vec3 R = CenterOfMass();
+    Vec3 L{};
+    for (int i=0; i<n(); ++i) L += mass(i) * cross(pos(i) - R, vel(i));
+    return L;
 }
 
 Vec3 XYZFrame::MinImage(Vec3 d) const {

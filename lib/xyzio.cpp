@@ -10,7 +10,7 @@
 #include "elements.h"
 #include "params.h"
 #include "vec3.h"
-
+#include "velocities.h"
 
 namespace {
 [[noreturn]] void read_error(const std::string& path, const std::string& what)
@@ -107,10 +107,12 @@ void xyz_write(const std::string& path, const XYZFrame& f){
 // Throws std::invalid_argument for n <= 0 or scale <= 0, std::runtime_error
 // if the box is too small for n particles.
 // ---------------------------------------------------------------------
-XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
+XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng, double margin) {
     if (n <= 0 || scale <= 0)
         throw std::invalid_argument(std::format("RandomFrame: need n > 0 and scale > 0 (got n={}, scale={:g})", n, scale));
-    
+    if (margin < 0 || 2 * margin >= scale)
+        throw std::invalid_argument(std::format("RandomFrame: need 0 <= margin < scale/2 (got margin={:g})", margin));
+
     // 1 1 1 box, scaled 
     XYZFrame f(n, Vec3{scale,scale,scale},bc);
 
@@ -127,25 +129,13 @@ XYZFrame RandomFrame(int n, double scale, Boundary bc, double T, Rng& rng) {
         do {
             if(++tries > max_tries) 
                 throw std::runtime_error(std::format("RandomFrame: could not place particle {} after {} tries, box too small for n={} (increase scale)", i, max_tries, n));
-            Vec3 r{ scale*rng.uniform(), scale*rng.uniform(), scale*rng.uniform()};
+            const double w = scale - 2 * margin;     // width of the region the particles are placed in
+            Vec3 r{ margin + w*rng.uniform(), margin + w*rng.uniform(), margin + w*rng.uniform()};
             f.set_pos(i, r);
         } while (TooCloseToEarlier(f,i));
     }
 
-    // Maxwell-Boltzmann velocities at temperature T, using each particle's mass
-    for (int i = 0; i < n; ++i) {
-        double m = f.mass(i);
-        Vec3 v{
-            rng.MaxwellBoltzmann(T, m),
-            rng.MaxwellBoltzmann(T, m),
-            rng.MaxwellBoltzmann(T, m)};
-        f.set_vel(i,v);
-    }
-
-    // remove the center-of-mass velocity: total momentum becomes zero
-    const Vec3 vcm = f.TotalMomentum() / f.TotalMass();
-    for (int i = 0; i < n; ++i) f.set_vel(i,f.vel(i) - vcm);
-
+    AssignVelocities(f, T, rng);
     return f;
 }
 
@@ -162,12 +152,6 @@ XYZFrame LatticeFrame(int k, double a, double T, Rng& rng, const char *label) {
                 f.set_pos(i, Vec3{ (ix + 0.5) * a, (iy + 0.5) * a, (iz + 0.5) * a });
             }
 
-    for (i = 0; i < f.n(); ++i) {
-        double m = f.mass(i);
-        Vec3 v{ rng.MaxwellBoltzmann(T, m), rng.MaxwellBoltzmann(T, m), rng.MaxwellBoltzmann(T, m) };
-        f.set_vel(i, v);
-    }
-    const Vec3 vcm = f.TotalMomentum() / f.TotalMass();
-    for (i = 0; i < f.n(); ++i) f.set_vel(i, f.vel(i) - vcm);
+    AssignVelocities(f, T, rng);
     return f;
 }

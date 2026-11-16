@@ -8,38 +8,14 @@
 #include "rng.h"
 #include "paths.h"
 #include "params.h"
-#include "integrator.h"
-#include "checkers.h"
-#include "measure.h"
-#include "forcefield.h"
+#include "simulation.h"
 #include "potentials/lennard_jones.h"
 
-/* Runs n_steps velocity-Verlet steps of length dt on geom, checking the
-   minimum distance after every step. Writes the start geometry
-   (initialconfig.xyz) and every step (stepNNNN.xyz) into dir, which is
-   created if needed, and prints the energies. 
-   Later to be implemented as the main scheme.
-   */
-static void RunMD(XYZFrame& geom, const ForceField& ff, const std::string& dir, double dt, int n_steps) {
-    std::filesystem::create_directories(dir);
-    xyz_write(dir + "initialconfig.xyz", geom);
-
-    double ekin = geom.KineticEnergy();
-    double epot = PotentialEnergy(geom, ff);
-    printf("%5s %8s %12s %12s %12s\n", "step", "t", "Ekin", "Epot", "Etot");
-    printf("%5d %8.3f %12.6f %12.6f %12.6f\n", 0, 0.0, ekin, epot, ekin + epot);
-
-    for (int step = 1; step <= n_steps; ++step) {
-        /* updates geom in place, so it already is the new geometry */
-        VelocityVerletStep(geom, ff, dt);
-        if (CheckMinDistance(geom) != 0) throw std::runtime_error("minDistance failed at step " + std::to_string(step));
-        geom.comment = std::format("MD step {}, t = {:g}", step, step * dt);
-        xyz_write(dir + std::format("step{:04d}.xyz", step), geom);
-
-        ekin = geom.KineticEnergy();
-        epot = geom.PotentialEnergy();      /* forces are fresh after the step: no recomputation */
-        printf("%5d %8.3f %12.6f %12.6f %12.6f\n", step, step * dt, ekin, epot, ekin + epot);
-    }
+/* Lennard-Jones only, default cutoff (one per simulation: a Simulation owns its force field) */
+static ForceField LJ() {
+    ForceField ff;
+    ff.Add(std::make_unique<LennardJones>());
+    return ff;
 }
 
 int main() {
@@ -61,14 +37,10 @@ int main() {
                input.label(i), r.x, r.y, r.z, v.x, v.y, v.z);
     }
     printf("--------------------------------\n");
-    printf("Testing Velocity-Verlet scheme for 100 timesteps\n");
+    printf("Testing Velocity-Verlet scheme for 1000 timesteps\n");
 
-    /* interactions: Lennard-Jones only, default cutoff */
-    ForceField ff;
-    ff.Add(std::make_unique<LennardJones>());
-
-    const double dt      = 0.005;  /* time step in tau */
-    const int    n_steps = 1000;
+    /* NVE, every step written to the stage directory and printed */
+    MDParams nve{ .dt = 0.005, .steps = 1000, .write_every = 1, .print_every = 1 };
 
     /* 1. random initial geometry, frames in output/RandomFrame/ */
     const int    n_particles = 20;
@@ -79,7 +51,9 @@ int main() {
     xyz_write(INPUT_DIR "initialconfig.xyz", geom);
     printf("RandomFrame: %d particles, frames in output/RandomFrame/, "
            "initial geometry also in input/initialconfig.xyz\n", geom.n());
-    RunMD(geom, ff, std::string(OUTPUT_DIR) + "RandomFrame/", dt, n_steps);
+    Simulation random(std::move(geom), LJ(), 42, 3);   /* periodic: N_f = 3N - 3 */
+    nve.dir = OUTPUT_DIR "RandomFrame/";
+    random.Produce(nve);
     printf("--------------------------------\n");
 
     /* 2. lattice initial geometry (same as in tests/force_test.cpp),
@@ -89,7 +63,9 @@ int main() {
     XYZFrame lattice = LatticeFrame(5, 1.2, DEFAULT_T, lattice_rng);
     printf("LatticeFrame: %d particles on a 5x5x5 simple cubic lattice (spacing 1.2), "
            "frames in output/LatticeFrame/\n", lattice.n());
-    RunMD(lattice, ff, std::string(OUTPUT_DIR) + "LatticeFrame/", dt, n_steps);
+    Simulation lat(std::move(lattice), LJ(), 1, 3);
+    nve.dir = OUTPUT_DIR "LatticeFrame/";
+    lat.Produce(nve);
     printf("--------------------------------\n");
     return 0;
     } catch (const std::exception& e) {

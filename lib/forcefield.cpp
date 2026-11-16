@@ -13,3 +13,4 @@ void ForceField::Compute(XYZFrame& f) const {
     for (const auto& p : potentials_) U += p->AddForces(f);
     f.set_potential_energy(U);
 }
+
