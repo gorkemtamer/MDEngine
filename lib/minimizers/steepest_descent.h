@@ -26,8 +26,8 @@ public:
                     double initial_step = 0.01, double max_step = 0.1);
     SteepestDescent(ForceField&&, double, int, double = 0.01, double = 0.1) = delete;
 
-    // Throws std::runtime_error for a Coulomb-only force field (see
-    // ForceField::CheckNotCollapsing).
+    // No check for collapse: without a minimum (e.g. Coulomb alone) U falls
+    // without bound and particles merge; Simulation::Minimize checks for it.
     MinimizeResult Minimize(XYZFrame& f) override;
 
     double initial_step() const { return initial_step_; }

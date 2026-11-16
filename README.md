@@ -52,6 +52,7 @@ correctly.
  - wall_test: Checks the WCA wall energy and force against the formula, energy conservation (error ratio 4 for dt -> dt/2) of an LJ gas bouncing between the walls, and that periodic frames and particles outside the box are rejected.
  - minimizer_test: Checks the steepest descent against known minima (particles in a harmonic trap, Ar-Kr pair at 2^(1/6) sigma, Ar4 tetrahedron), a periodic lattice, the step length rule, and that bad parameters and Coulomb-only systems are rejected.
  - velocity_test: Checks AssignVelocities for a light/heavy mixture: zero total momentum, equipartition and the Maxwell-Boltzmann variance per element, and that T < 0 and particles without an element are rejected.
+ - (add new tests as well)
 
 units: everything is in reduced (Lennard-Jones) units, see reduced_units.md (for a starting point and completeness, parameter choice is done by claude, later to be changed)
 
@@ -60,6 +61,33 @@ Starting point: Lennard-Jones potential and hard spheres.
 
 Time integrator: Velocity-Verlet
 
+-----------------------------------------------------
+16.11.2026: (version 0.0.4)
+
+- Temporary Coulomb-only check (`ForceField::CheckNotCollapsing`) removed: a collapse is now caught
+by the step-size check during MD ("time step too large") and by the minimum-distance check after
+the energy minimization ("minimization collapsed") -test moved from minimizer_test to simulation_test-
+- RemoveAngularMomentum: removes the rotation of open systems (with `XYZFrame::AngularMomentum()`
+about the centre of mass), so N_f = 3N - 6 for a free cluster -additional checks in velocity_test-
+- Tests: maxima taken with `max_nan` instead of `std::fmax` (fmax ignores NaN, so a NaN error could pass
+a check); `check()` fails for NaN values
+- `Simulation` class (lib/simulation.h) details:
+    - owns the frame, the force field and one random generator (velocities first, then the thermostat)
+    - stages called in order: `Minimize` (steepest descent), `AssignVelocities`, `Equilibrate`, `Produce`;
+    NVE or NVT (Bussi) per stage, NPT rejected until a barostat exists
+    - number of removed degrees of freedom given explicitly (0 walls/trap, 3 momentum, 6 momentum and
+    angular momentum for open clusters); `dof()` and `Temperature()` = 2K / N_f
+    - output per stage: stepNNNNNN.xyz frames and energies.dat (step, t, T, Ekin, Epot, H) every
+    `write_every` steps, energies to the terminal every `print_every` steps, step 0 included
+    - step-size check every step: a particle moving more than `max_move` (0.1 sigma) stops the run
+    - main and nacl now use it (both RunMD functions removed); nacl runs the full pipeline per start
+    (minimize -> velocities -> NVT 10 tau -> NVE 3 tau), frames in output/<name>/equilibration/ and
+    output/<name>/production/
+    - reference/main_seed42.txt regenerated once for the new output format (same numbers)
+    - additional test: simulation_test (every stage bit-identical to the same parts called by hand,
+    output files, step-size check, Coulomb-only collapse, rejected parameters)
+- reduced_units.md updated to the current names (RandomFrame, Rng::MaxwellBoltzmann, MIN_DIST_FACTOR = 0.6
+and PLACE_DIST_FACTOR = 0.8, MD/minimizer/potential parameters with their units)
 -----------------------------------------------------
 16.10.2026:
 
@@ -77,6 +105,8 @@ to avoid unphysical starts)
 - Steepest descent minimizer (as in GROMACS) as a stand-in method for the moment -additional test for it-
 - AssignVelocities: Maxwell-Boltzmann velocities as a separate function (used by RandomFrame, LatticeFrame
 and the NaCl example) -additional test for it-
+- `Simulation` class: Complete pipeline for energy minimization, equilibration and production runs, and 
+energy/temperature data of entire run, together with the entire trajectory's snapshot.
 -----------------------------------------------------
 14.10.2026: (version 0.0.3 cpp)
 

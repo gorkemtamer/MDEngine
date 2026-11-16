@@ -17,8 +17,6 @@ SteepestDescent::SteepestDescent(const ForceField& ff, double force_tol, int max
 }
 
 MinimizeResult SteepestDescent::Minimize(XYZFrame& f) {
-    ff_.CheckNotCollapsing();   // TEMPORARY, see forcefield.h: Coulomb alone has no minimum
-
     double U = f.PotentialEnergy(ff_);
     double Fmax = MaxForce(f);
     double h = initial_step_;

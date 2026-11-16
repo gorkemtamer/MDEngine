@@ -7,7 +7,8 @@
 //   4. periodic LJ lattice: U goes down, positions stay in the box
 //   5. velocities are not touched, forces and energy belong to the result
 //   6. step limit reached: converged = false; step length grows by 1.2 up to max_step
-//   7. bad parameters and Coulomb alone are rejected
+//   7. bad parameters are rejected
+// (collapse without a minimum, e.g. Coulomb alone, is caught by Simulation, see simulation_test)
 
 #include <cmath>
 #include <exception>
@@ -15,7 +16,6 @@
 #include <stdexcept>
 #include "minimizers/steepest_descent.h"
 #include "potentials/harmonic_trap.h"
-#include "potentials/coulomb.h"
 #include "xyzio.h"
 #include "rng.h"
 #include "test_helpers.h"
@@ -155,18 +155,6 @@ int main() {
             check(throws([&] { SteepestDescent(ff, 1e-3, 0); }), "max_steps = 0 rejected");
             check(throws([&] { SteepestDescent(ff, 1e-3, 10, 0.0); }), "initial step = 0 rejected");
             check(throws([&] { SteepestDescent(ff, 1e-3, 10, 0.1, 0.05); }), "max step < initial step rejected");
-
-            ForceField coulomb_only;
-            coulomb_only.Add(std::make_unique<Coulomb>());
-            XYZFrame f(2, Vec3{ 10, 10, 10 }, Boundary::Open);
-            f.set_element(0, element_index("Na"));
-            f.set_element(1, element_index("Cl"));
-            f.set_pos(0, Vec3{ 4, 5, 5 });
-            f.set_pos(1, Vec3{ 6, 5, 5 });
-            bool thrown = false;
-            SteepestDescent sd(coulomb_only, 1e-3, 100);
-            try { sd.Minimize(f); } catch (const std::runtime_error&) { thrown = true; }
-            check(thrown, "Coulomb alone rejected (no minimum)");
         }
     } catch (const std::exception& e) {
         std::printf("FAIL unexpected exception: %s\n", e.what());

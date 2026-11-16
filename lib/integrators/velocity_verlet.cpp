@@ -3,8 +3,6 @@
 #include "vec3.h"
 
 void VelocityVerlet::Step(XYZFrame& f) {
-    ff_.CheckNotCollapsing();   // TEMPORARY, see forcefield.h
-
     // F(t): only needed on the first step, afterwards it is kept from the previous step
     if (!f.forces_valid()) ff_.Compute(f);
 
